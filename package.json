@@ -1,0 +1,16 @@
+﻿{
+    "name":  "popdex-grid-bot",
+    "version":  "0.1.0",
+    "private":  true,
+    "type":  "module",
+    "scripts":  {
+                    "start":  "node src/server.js",
+                    "test":  "node test/grid.test.js"
+                },
+    "engines":  {
+                    "node":  "\u003e=20"
+                },
+    "dependencies":  {
+                         "ethers":  "^6.16.0"
+                     }
+}

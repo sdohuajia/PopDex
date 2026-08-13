@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>网格交易总控台</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0a0e17;
+  --bg2: #0f1420;
+  --panel: #141924;
+  --panel2: #1a2235;
+  --border: #1e2d45;
+  --border2: #253350;
+  --txt: #dde6f0;
+  --mut: #6b82a0;
+  --mut2: #8fa5c0;
+  --grn: #22c55e;
+  --grn2: #16a34a;
+  --red: #ef4444;
+  --red2: #dc2626;
+  --blu: #3b82f6;
+  --blu2: #2563eb;
+  --yel: #f59e0b;
+  --pur: #8b5cf6;
+  --pur2: #7c3aed;
+  --de-color: #f59e0b;
+  --ex-color: #3b82f6;
+  --rs-color: #22c55e;
+  --de-bg: #f59e0b18;
+  --ex-bg: #3b82f618;
+  --rs-bg: #22c55e18;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font: 13px/1.5 -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 20px; height: 52px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+}
+.header-logo { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; color: var(--txt); }
+.header-logo span { color: var(--pur); }
+.header-sep { width: 1px; height: 20px; background: var(--border2); }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+/* ── Tabs ── */
+.main-tabs {
+  display: flex; gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  padding: 0 20px;
+}
+.tab-btn {
+  padding: 10px 18px; cursor: pointer; font-size: 13px; font-weight: 500;
+  color: var(--mut2); border: none; background: none;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all .15s;
+}
+.tab-btn:hover { color: var(--txt); }
+.tab-btn.active { color: var(--txt); border-bottom-color: var(--pur); }
+.tab-btn .dot-de { color: var(--de-color); }
+.tab-btn .dot-ex { color: var(--ex-color); }
+.tab-btn .dot-rs { color: var(--rs-color); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Layout ── */
+.wrap { padding: 16px 20px; max-width: 1600px; margin: 0 auto; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.grid-left-right { display: grid; grid-template-columns: 320px 1fr; gap: 14px; }
+
+/* ── Panel ── */
+.panel {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px;
+}
+.panel-title {
+  font-size: 11px; font-weight: 600; letter-spacing: .6px;
+  text-transform: uppercase; color: var(--mut2); margin-bottom: 12px;
+}
+.panel.de { border-top: 2px solid var(--de-color); }
+.panel.ex { border-top: 2px solid var(--ex-color); }
+.panel.rs { border-top: 2px solid var(--rs-color); }
+
+/* ── Overview cards ── */
+.overview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+.ov-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+  position: relative; overflow: hidden;
+}
+.ov-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.ov-card.de::before { background: var(--de-color); }
+.ov-card.ex::before { background: var(--ex-color); }
+.ov-card.rs::before { background: var(--rs-color); }
+.ov-exname {
+  font-size: 12px; font-weight: 700; letter-spacing: .4px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.ov-exname .run-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--mut);
+}
+.ov-exname .run-dot.on { background: var(--grn); box-shadow: 0 0 6px var(--grn); }
+.ov-stat { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+.ov-stat .lbl { color: var(--mut2); }
+.ov-stat .val { font-weight: 600; }
+.ov-pnl { font-size: 20px; font-weight: 700; margin: 8px 0 4px; }
+.ov-sub { font-size: 11px; color: var(--mut2); }
+
+/* ── Stat rows ── */
+.kv { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12px; border-bottom: 1px dashed var(--border2); }
+.kv:last-child { border-bottom: none; }
+.kv .lbl { color: var(--mut2); }
+.kv .val { font-weight: 500; }
+
+/* ── Form controls ── */
+label { display: block; font-size: 11px; color: var(--mut2); margin: 9px 0 3px; font-weight: 500; }
+input, select {
+  width: 100%; background: var(--bg2); border: 1px solid var(--border2);
+  color: var(--txt); border-radius: 6px; padding: 7px 9px;
+  font-size: 13px; transition: border-color .15s; font-family: inherit;
+}
+input:focus, select:focus { outline: none; border-color: var(--pur); }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; min-width: 0; }
+
+/* ── Mode buttons ── */
+.modes { display: flex; gap: 7px; margin-top: 5px; }
+.mode-btn {
+  flex: 1; text-align: center; padding: 8px 4px;
+  border: 1px solid var(--border2); border-radius: 7px;
+  cursor: pointer; background: var(--bg2);
+  transition: all .15s; font-weight: 600; font-size: 12px;
+  color: var(--mut2);
+}
+.mode-btn small { display: block; font-weight: 400; color: var(--mut); font-size: 10px; margin-top: 1px; }
+.mode-btn.sel { border-color: var(--pur); background: #8b5cf618; color: #c4b5fd; }
+.mode-btn.rec { box-shadow: 0 0 0 1px var(--yel) inset; }
+
+/* ── Risk toggle ── */
+.risk-toggle { display: inline-flex; border: 1px solid var(--border2); border-radius: 7px; overflow: hidden; }
+.risk-btn { padding: 5px 14px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--mut2); transition: all .15s; }
+.risk-btn.sel { background: var(--pur); color: #fff; }
+
+/* ── Buttons ── */
+.btn {
+  width: 100%; padding: 10px; border: none; border-radius: 7px;
+  font-weight: 600; cursor: pointer; margin-top: 10px;
+  color: #fff; font-size: 13px; transition: all .15s; font-family: inherit;
+}
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-start { background: linear-gradient(135deg, var(--grn2), var(--grn)); }
+.btn-start:hover:not(:disabled) { filter: brightness(1.1); }
+.btn-stop { background: linear-gradient(135deg, var(--red2), var(--red)); }
+.btn-stop:hover:not(:disabled) { filter: brightness(1.1); }
+.btn-ghost { background: transparent; border: 1px solid var(--border2); color: var(--txt); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--mut2); }
+.btn-smart { background: linear-gradient(135deg, var(--pur2), var(--pur)); }
+.btn-smart:hover:not(:disabled) { filter: brightness(1.1); }
+
+/* ── Badges ── */
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+.badge-paper { background: #3b82f618; color: #93c5fd; border: 1px solid #3b82f640; }
+.badge-live { background: #ef444418; color: #fca5a5; border: 1px solid #ef444440; }
+.badge-real { background: #22c55e18; color: #86efac; border: 1px solid #22c55e40; }
+.badge-syn { background: #f59e0b18; color: #fcd34d; border: 1px solid #f59e0b40; }
+.badge-run { background: #22c55e18; color: #86efac; border: 1px solid #22c55e40; }
+.badge-stop { background: #6b820018; color: var(--mut2); border: 1px solid var(--border2); }
+
+/* ── Connection / program status pill ── */
+.conn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 11px; border-radius: 20px; border: 1px solid var(--border2); color: var(--mut2); }
+.conn .cdot { width: 8px; height: 8px; border-radius: 50%; background: var(--mut); }
+.conn.online { color: #86efac; background: #22c55e14; border-color: #22c55e40; }
+.conn.online .cdot { background: var(--grn); box-shadow: 0 0 6px var(--grn); animation: connpulse 2s infinite; }
+.conn.warn { color: #fcd34d; background: #f59e0b14; border-color: #f59e0b40; }
+.conn.warn .cdot { background: var(--yel); animation: connpulse 1s infinite; }
+.conn.offline { color: #fca5a5; background: #ef444414; border-color: #ef444440; }
+.conn.offline .cdot { background: var(--red); box-shadow: 0 0 6px var(--red); }
+@keyframes connpulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* ── Trend warning box (per-exchange on overview) ── */
+.trend-box { margin-top: 10px; font-size: 11px; line-height: 1.45; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--border2); color: var(--mut2); background: var(--bg2); }
+.trend-box.trend-idle { color: var(--mut); }
+.trend-box.trend-ok { color: #86efac; border-color: #22c55e30; background: #22c55e0d; }
+.trend-box.trend-watch { color: #fcd34d; border-color: #f59e0b55; background: #f59e0b14; }
+.trend-box.trend-alert { color: #fca5a5; border-color: #ef4444; background: #ef44441f; animation: trendglow 1.6s infinite; }
+@keyframes trendglow { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } 50% { box-shadow: 0 0 10px 1px rgba(239,68,68,.4); } }
+
+/* ── Per-exchange health dot (header) ── */
+.hdot { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--mut); margin-right:4px; vertical-align:middle; }
+.hdot.ok { background:var(--grn); box-shadow:0 0 6px var(--grn); }
+.hdot.warn { background:var(--yel); box-shadow:0 0 6px var(--yel); }
+.hdot.error { background:var(--red); box-shadow:0 0 6px var(--red); animation:connpulse 1s infinite; }
+.hdot.idle { background:var(--mut); }
+/* ── Per-exchange health line (overview card) ── */
+.exhealth { font-size:11px; margin:2px 0 0; color:var(--mut2); }
+.exhealth.eh-ok { color:#86efac; }
+.exhealth.eh-warn { color:#fcd34d; }
+.exhealth.eh-error { color:#fca5a5; }
+.exhealth.eh-idle { color:var(--mut); }
+
+/* ── AI 助手 ── */
+.ai-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; }
+.ai-grid label { display:block; font-size:11px; color:var(--mut); margin-bottom:4px; }
+.ai-grid input, .ai-grid select { width:100%; }
+.ai-badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:600; margin-left:8px; }
+.ai-badge.ok { background:#16a34a33; color:#86efac; }
+.ai-badge.warn { background:#eab30833; color:#fcd34d; }
+.ai-badge.critical { background:#dc262633; color:#fca5a5; }
+.ai-box { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:13px; line-height:1.7; white-space:pre-wrap; word-break:break-word; }
+.ai-chatlog { max-height:380px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:4px 0; }
+.ai-msg { padding:8px 12px; border-radius:10px; font-size:13px; line-height:1.6; max-width:88%; white-space:pre-wrap; word-break:break-word; }
+.ai-msg.user { align-self:flex-end; background:#8b5cf629; border:1px solid #8b5cf640; }
+.ai-msg.bot { align-self:flex-start; background:var(--bg2); border:1px solid var(--border); }
+.ai-msg.sys { align-self:center; color:var(--mut); font-size:12px; background:transparent; }
+.ai-action { align-self:flex-start; border:1px solid var(--yel); border-radius:10px; padding:10px 12px; font-size:12px; max-width:88%; background:#eab30811; }
+.ai-action .btnrow { display:flex; gap:8px; margin-top:8px; }
+.ai-action button { padding:5px 14px; border-radius:6px; border:none; cursor:pointer; font-size:12px; font-weight:600; }
+
+/* ── 本次启动参数（总览卡片，仅运行中显示） ── */
+.gridcfg { margin-top:8px; padding:8px 10px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; font-size:11px; color:var(--mut2); line-height:1.7; }
+.gridcfg b { color:var(--txt); font-weight:600; }
+.gridcfg .gc-title { color:var(--mut); font-size:10px; letter-spacing:.5px; margin-bottom:2px; }
+
+/* ── Trend box ── */
+.rec-box { border-radius: 8px; padding: 11px 13px; font-size: 12px; border: 1px solid var(--border); background: var(--bg2); }
+.rec-box.rec-up { background: #22c55e10; border-color: #22c55e40; }
+.rec-box.rec-down { background: #ef444410; border-color: #ef444440; }
+.rec-box.rec-range { background: #3b82f610; border-color: #3b82f640; }
+.rec-tag { font-size: 15px; font-weight: 700; margin: 4px 0 2px; }
+.rec-detail { font-size: 11px; color: var(--mut2); margin-top: 4px; line-height: 1.4; }
+
+/* ── Chart ── */
+.chartbox { position: relative; height: 300px; }
+
+/* ── Table ── */
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+th, td { text-align: right; padding: 4px 5px; border-bottom: 1px solid var(--border); }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppercase; }
+
+/* ── Log ── */
+.log { max-height: 140px; overflow-y: auto; font-size: 11px; }
+.log-item { padding: 4px 0; border-bottom: 1px dashed var(--border); color: var(--mut2); line-height: 1.4; }
+.log-item:last-child { border-bottom: none; }
+
+/* ── Misc ── */
+.up { color: var(--grn); }
+.down { color: var(--red); }
+.muted { color: var(--mut2); font-size: 11px; }
+.pill { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+.pill-buy { background: #22c55e18; color: #86efac; }
+.pill-sell { background: #ef444418; color: #fca5a5; }
+.warn-box { background: #f59e0b10; border: 1px solid #f59e0b40; border-radius: 7px; padding: 8px 10px; font-size: 11px; color: #fcd34d; margin-bottom: 10px; }
+.risk-preview { font-size: 11px; color: var(--mut2); margin-top: 8px; line-height: 1.5; }
+
+/* ── IP Config panel ── */
+.ip-section { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--bg2); margin-bottom: 10px; }
+.ip-section-title { font-size: 11px; font-weight: 700; color: var(--mut2); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+.ip-row { display: flex; gap: 10px; align-items: flex-end; }
+.ip-row > :first-child { flex: 1; }
+.ip-apply-btn { padding: 7px 14px; font-size: 12px; font-weight: 600; border: 1px solid var(--border2); background: var(--panel); color: var(--txt); border-radius: 6px; cursor: pointer; white-space: nowrap; transition: all .15s; font-family: inherit; }
+.ip-apply-btn:hover { border-color: var(--pur); color: var(--pur); }
+.ip-status { font-size: 11px; margin-top: 6px; min-height: 16px; }
+
+/* ── Summary total ── */
+.total-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;
+}
+.total-card {
+  background: var(--panel2); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 12px 14px;
+}
+.total-card .lbl { font-size: 10px; color: var(--mut2); text-transform: uppercase; letter-spacing: .4px; }
+.total-card .val { font-size: 20px; font-weight: 700; margin: 3px 0 1px; }
+.total-card .sub { font-size: 11px; color: var(--mut2); }
+
+/* PopDEX-only frontend: keep dormant EX/RS DOM nodes hidden so legacy
+   controller code remains harmless while the user-facing UI is single venue. */
+#tab-ex, #tab-rs, .ov-card.ex, .ov-card.rs, .project-ex, .project-rs { display:none !important; }
+.overview-grid { grid-template-columns:minmax(0, 1fr); }
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .overview-grid { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr; }
+}
+@media (max-width: 800px) {
+  .grid-left-right { grid-template-columns: 1fr; }
+  .overview-grid { grid-template-columns: 1fr; }
+  .total-row { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="header">
+  <div class="header-logo">PopDEX <span>网格控制台</span></div>
+  <div class="header-sep"></div>
+  <span class="hdot idle" id="hdr-de-dot" title=""></span><span id="hdr-de" class="badge badge-paper">DE: PAPER</span>
+  <div class="header-right">
+    <span id="hdr-proxy" class="conn" title="全局代理状态"><span class="cdot"></span><span id="hdr-proxy-txt">代理检测中…</span></span>
+    <span id="hdr-conn" class="conn warn" title="后端连接状态"><span class="cdot"></span><span id="hdr-conn-txt">连接中…</span></span>
+    <span class="muted" id="hdr-time"></span>
+  </div>
+</div>
+
+<!-- ── Tabs ── -->
+<div class="main-tabs">
+  <button class="tab-btn active" onclick="switchTab('overview')">📊 总览</button>
+  <button class="tab-btn" onclick="switchTab('de')"><span class="dot-de">●</span> PopDEX</button>
+  <button class="tab-btn" onclick="switchTab('ai')">🤖 AI助手</button>
+  <button class="tab-btn" onclick="switchTab('settings')">⚙ IP配置</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- TAB: 总览 -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="tab-overview" class="tab-panel active">
+<div class="wrap">
+
+  <!-- 三交易所汇总卡 -->
+  <div class="total-row" style="margin-top:4px">
+    <div class="total-card">
+      <div class="lbl">PopDEX 总权益</div>
+      <div class="val" id="tot-equity">—</div>
+      <div class="sub">账户余额 <span id="tot-balance">—</span></div>
+    </div>
+    <div class="total-card">
+      <div class="lbl">总盈亏</div>
+      <div class="val" id="tot-pnl">—</div>
+      <div class="sub">已实现 <span id="tot-realized">—</span> / 未实现 <span id="tot-unrealized">—</span></div>
+    </div>
+    <div class="total-card">
+      <div class="lbl">累计交易量</div>
+      <div class="val" id="tot-volume">—</div>
+      <div class="sub">完成网格 <span id="tot-rungs">—</span> 格</div>
+    </div>
+    <div class="total-card">
+      <div class="lbl">运行状态</div>
+      <div class="val" id="tot-running" style="font-size:14px;margin-top:6px">—</div>
+      <div class="sub" id="tot-modes">—</div>
+    </div>
+  </div>
+
+  <!-- 三交易所独立概览 -->
+  <div class="overview-grid">
+    <!-- PopDEX -->
+    <div class="ov-card de">
+      <div class="ov-exname" style="color:var(--de-color)">
+        <span class="run-dot" id="ov-de-dot"></span>
+        PopDEX
+        <span id="ov-de-badge" class="badge badge-paper" style="margin-left:auto">PAPER</span>
+      </div>
+      <div id="ov-de-health" class="exhealth eh-idle">—</div>
+      <div class="ov-pnl" id="ov-de-pnl">—</div>
+      <div class="ov-sub" id="ov-de-ret">收益率 —</div>
+      <div style="margin-top:10px">
+        <div class="ov-stat"><span class="lbl">余额</span><span class="val" id="ov-de-bal">—</span></div>
+        <div class="ov-stat"><span class="lbl">权益</span><span class="val" id="ov-de-eq">—</span></div>
+        <div class="ov-stat"><span class="lbl">已实现</span><span class="val" id="ov-de-rpnl">—</span></div>
+        <div class="ov-stat"><span class="lbl">未实现</span><span class="val" id="ov-de-upnl">—</span></div>
+        <div class="ov-stat"><span class="lbl">累计交易量</span><span class="val" id="ov-de-vol">—</span></div>
+        <div class="ov-stat"><span class="lbl">今日交易量</span><span class="val" id="ov-de-vol-today">—</span></div>
+        <div class="ov-stat"><span class="lbl">昨日交易量</span><span class="val" id="ov-de-vol-yesterday">—</span></div>
+        <div class="ov-stat"><span class="lbl">完成网格</span><span class="val" id="ov-de-rungs">—</span></div>
+        <div class="ov-stat"><span class="lbl">最新价</span><span class="val" id="ov-de-price">—</span></div>
+        <div class="ov-stat"><span class="lbl">当前市场</span><span class="val" id="ov-de-mkt">—</span></div>
+      </div>
+      <div id="ov-de-gridcfg" class="gridcfg" style="display:none"></div>
+      <div id="ov-de-ai" class="ai-box muted" style="display:none;margin-top:8px;font-size:12px"></div>
+      <div id="ov-de-trend" class="trend-box trend-idle">趋势监测：等待数据…</div>
+      <button class="btn btn-ghost" style="margin-top:10px;font-size:12px" onclick="reconnectEx('de', this)">🔌 重连交易所（不动挂单/持仓）</button>
+      <button class="btn btn-ghost" style="margin-top:8px;font-size:12px" onclick="switchTab('de')">进入 PopDEX 控制台 →</button>
+    </div>
+
+    <!-- Extended -->
+    <div class="ov-card ex">
+      <div class="ov-exname" style="color:var(--ex-color)">
+        <span class="run-dot" id="ov-ex-dot"></span>
+        Extended
+        <span id="ov-ex-badge" class="badge badge-paper" style="margin-left:auto">PAPER</span>
+      </div>
+      <div id="ov-ex-health" class="exhealth eh-idle">—</div>
+      <div class="ov-pnl" id="ov-ex-pnl">—</div>
+      <div class="ov-sub" id="ov-ex-ret">收益率 —</div>
+      <div style="margin-top:10px">
+        <div class="ov-stat"><span class="lbl">余额</span><span class="val" id="ov-ex-bal">—</span></div>
+        <div class="ov-stat"><span class="lbl">权益</span><span class="val" id="ov-ex-eq">—</span></div>
+        <div class="ov-stat"><span class="lbl">已实现</span><span class="val" id="ov-ex-rpnl">—</span></div>
+        <div class="ov-stat"><span class="lbl">未实现</span><span class="val" id="ov-ex-upnl">—</span></div>
+        <div class="ov-stat"><span class="lbl">交易量</span><span class="val" id="ov-ex-vol">—</span></div>
+        <div class="ov-stat"><span class="lbl">完成网格</span><span class="val" id="ov-ex-rungs">—</span></div>
+        <div class="ov-stat"><span class="lbl">最新价</span><span class="val" id="ov-ex-price">—</span></div>
+        <div class="ov-stat"><span class="lbl">当前市场</span><span class="val" id="ov-ex-mkt">—</span></div>
+      </div>
+      <div id="ov-ex-gridcfg" class="gridcfg" style="display:none"></div>
+      <div id="ov-ex-ai" class="ai-box muted" style="display:none;margin-top:8px;font-size:12px"></div>
+      <div id="ov-ex-trend" class="trend-box trend-idle">趋势监测：等待数据…</div>
+    </div>
+
+    <!-- RISEx -->
+    <div class="ov-card rs">
+      <div class="ov-exname" style="color:var(--rs-color)">
+        <span class="run-dot" id="ov-rs-dot"></span>
+        RISEx
+        <span id="ov-rs-badge" class="badge badge-paper" style="margin-left:auto">PAPER</span>
+      </div>
+      <div id="ov-rs-health" class="exhealth eh-idle">—</div>
+      <div class="ov-pnl" id="ov-rs-pnl">—</div>
+      <div class="ov-sub" id="ov-rs-ret">收益率 —</div>
+      <div style="margin-top:10px">
+        <div class="ov-stat"><span class="lbl">余额</span><span class="val" id="ov-rs-bal">—</span></div>
+        <div class="ov-stat"><span class="lbl">权益</span><span class="val" id="ov-rs-eq">—</span></div>
+        <div class="ov-stat"><span class="lbl">已实现</span><span class="val" id="ov-rs-rpnl">—</span></div>
+        <div class="ov-stat"><span class="lbl">未实现</span><span class="val" id="ov-rs-upnl">—</span></div>
+        <div class="ov-stat"><span class="lbl">交易量</span><span class="val" id="ov-rs-vol">—</span></div>
+        <div class="ov-stat"><span class="lbl">完成网格</span><span class="val" id="ov-rs-rungs">—</span></div>
+        <div class="ov-stat"><span class="lbl">最新价</span><span class="val" id="ov-rs-price">—</span></div>
+        <div class="ov-stat"><span class="lbl">当前市场</span><span class="val" id="ov-rs-mkt">—</span></div>
+      </div>
+      <div id="ov-rs-gridcfg" class="gridcfg" style="display:none"></div>
+      <div id="ov-rs-ai" class="ai-box muted" style="display:none;margin-top:8px;font-size:12px"></div>
+      <div id="ov-rs-trend" class="trend-box trend-idle">趋势监测：等待数据…</div>
+    </div>
+  </div>
+
+  <!-- AI 市况分析（BTC，定时报告） -->
+  <div class="panel" style="margin-top:14px">
+    <div class="panel-title">🤖 AI 市况分析 · BTC<span id="ov-ai-mkt-time" class="muted" style="font-size:11px;margin-left:10px;font-weight:400"></span></div>
+    <div id="ov-ai-market" class="ai-box muted">等待首次分析…（需先在「🤖 AI助手」页配置 API Key）</div>
+    <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="margin:0;width:auto;padding:6px 16px;font-size:12px" onclick="aiMarketRun(this)">立即分析</button>
+      <span class="muted" style="font-size:12px">市况报告间隔</span>
+      <input id="ov-ai-mkt-min" type="number" min="0" style="width:72px;padding:5px 8px;font-size:12px">
+      <span class="muted" style="font-size:12px">分钟 ·　哨兵报告间隔</span>
+      <input id="ov-ai-sent-min" type="number" min="0" style="width:72px;padding:5px 8px;font-size:12px">
+      <span class="muted" style="font-size:12px">分钟（0=关闭）</span>
+      <button class="btn btn-ghost" style="margin:0;width:auto;padding:6px 16px;font-size:12px" onclick="aiSaveIntervals(this)">保存间隔</button>
+      <span id="ov-ai-int-status" class="muted" style="font-size:12px"></span>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- TAB: PopDEX -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="tab-de" class="tab-panel">
+<div class="wrap">
+<div class="grid-left-right">
+  <!-- Left: Controls -->
+  <div>
+    <div class="panel de" style="margin-bottom:14px">
+      <div class="panel-title" style="color:var(--de-color)">PopDEX · 市场与趋势</div>
+      <label>交易对</label>
+      <select id="de-market"></select>
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label>K线周期</label>
+          <select id="de-interval">
+            <option value="900">15m</option>
+            <option value="3600" selected>1h</option>
+            <option value="14400">4h</option>
+            <option value="86400">1d</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-ghost" style="margin:0;padding:7px" id="de-refresh-trend">刷新</button>
+        </div>
+      </div>
+      <div style="margin-top:10px" id="de-rec-box" class="rec-box rec-range">
+        <div class="muted">趋势分析</div>
+        <div class="rec-tag" id="de-rec-tag">分析中…</div>
+        <div class="rec-detail" id="de-rec-detail">—</div>
+        <button class="btn btn-ghost" style="margin-top:8px;padding:6px;font-size:12px" id="de-apply-rec">采用推荐策略 + 自动区间</button>
+      </div>
+    </div>
+
+    <div class="panel de">
+      <div class="panel-title" style="color:var(--de-color)">PopDEX · 策略配置</div>
+      <label>网格类型</label>
+      <div class="modes" id="de-modes">
+        <div class="mode-btn sel" data-mode="neutral">中性<small>双向震荡</small></div>
+        <div class="mode-btn" data-mode="long">做多<small>低买高止</small></div>
+        <div class="mode-btn" data-mode="short">做空<small>高空低止</small></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <span class="muted">风格</span>
+        <div class="risk-toggle" id="de-risk-toggle">
+          <span class="risk-btn sel" data-risk="steady">稳健</span>
+          <span class="risk-btn" data-risk="aggressive">激进</span>
+        </div>
+        <span class="muted" id="de-risk-hint">成交少·更安全</span>
+      </div>
+      <button class="btn btn-smart" id="de-smart-fill">🎯 智能填充参数</button>
+      <div class="muted" id="de-smart-note" style="margin:5px 0 2px"></div>
+      <div class="row">
+        <div><label>下边界</label><input id="de-lower" type="number" step="any"></div>
+        <div><label>上边界</label><input id="de-upper" type="number" step="any"></div>
+      </div>
+      <div class="row">
+        <div><label>网格数量</label><input id="de-grid-count" type="number" value="20" min="2"></div>
+        <div><label>每格数量(币)</label><input id="de-size-base" type="number" step="any" value="0.0002"></div>
+      </div>
+      <div class="row">
+        <div><label>杠杆 (x)</label><input id="de-leverage" type="number" value="3" min="1"></div>
+        <div>
+          <label>区间外止损策略</label>
+          <select id="de-auto-stop">
+            <option value="close" selected>冲破区间平仓</option>
+            <option value="recover">只减仓回收阶梯</option>
+          </select>
+        </div>
+      </div>
+      <div class="risk-preview" id="de-risk-preview"></div>
+      <button class="btn btn-start" id="de-start-btn">启动 PopDEX 网格</button>
+      <button class="btn btn-stop" id="de-stop-btn" disabled>停止 PopDEX 网格</button>
+      <div class="panel" style="margin-top:12px;border:1px solid var(--pur2)">
+        <div class="panel-title" style="color:#c4b5fd">钱包授权</div>
+        <button class="btn btn-smart" id="popdex-connect-wallet" style="margin-top:4px">连接钱包并读取账户</button>
+        <button class="btn btn-ghost" id="popdex-authorize-agent" style="margin-top:8px">授权 Agent 下单</button>
+        <div id="popdex-wallet-status" class="muted" style="margin-top:8px">尚未连接钱包</div>
+      </div>
+      <button class="btn btn-ghost" id="de-adjust-btn" disabled style="margin-top:8px">调整区间（不停止网格）</button>
+      <button class="btn btn-ghost" id="de-cancel-orders-btn" style="margin-top:8px;border-color:var(--yel);color:var(--yel)">撤销所有挂单（保留持仓）</button>
+    </div>
+  </div>
+
+  <!-- Right: Monitor -->
+  <div>
+    <div class="panel" id="de-orphan-prompt" style="display:none;margin-bottom:14px;border:1px solid var(--yel)">
+      <div class="panel-title" style="color:var(--yel)">⚠ 检测到未托管持仓 · 请选择处理方式</div>
+      <div id="de-orphan-info" class="muted" style="margin-bottom:10px;line-height:1.5"></div>
+      <button class="btn btn-ghost" id="de-orphan-recover" style="border-color:var(--yel);color:var(--yel)">① 只减仓回收阶梯</button>
+      <label style="display:block;font-size:11px;color:var(--mut2);margin-top:6px"><input type="checkbox" id="de-orphan-above-entry" style="width:auto;margin-right:6px;vertical-align:middle">回收仅在成本价以上减仓（不亏才减；否则任何反弹都分批减）</label>
+      <button class="btn btn-ghost" id="de-orphan-regrid" style="margin-top:8px">② 按现价重开网格</button>
+      <button class="btn btn-stop" id="de-orphan-close" style="margin-top:8px">③ 市价平仓</button>
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+      <div class="panel-title">PopDEX · 账户状态</div>
+      <div class="grid-2" style="gap:10px;margin-bottom:10px">
+        <div><div class="kv"><span class="lbl">运行状态</span><span class="val" id="de-st-run">未运行</span></div>
+          <div class="kv"><span class="lbl">最新价</span><span class="val" id="de-st-price">—</span></div>
+          <div class="kv"><span class="lbl">账户余额</span><span class="val" id="de-st-bal">—</span></div>
+          <div class="kv"><span class="lbl">权益</span><span class="val" id="de-st-eq">—</span></div></div>
+        <div><div class="kv"><span class="lbl">持仓</span><span class="val" id="de-st-pos">—</span></div>
+          <div class="kv"><span class="lbl">持仓均价</span><span class="val" id="de-st-entry">—</span></div>
+          <div class="kv"><span class="lbl">已实现盈亏</span><span class="val" id="de-st-rpnl">—</span></div>
+          <div class="kv"><span class="lbl">未实现盈亏</span><span class="val" id="de-st-upnl">—</span></div></div>
+      </div>
+      <div class="kv"><span class="lbl">总盈亏 / 收益率</span><span class="val" id="de-st-total">—</span></div>
+      <div class="kv"><span class="lbl">挂单数 / 完成格</span><span class="val" id="de-st-orders">—</span></div>
+      <div class="kv"><span class="lbl">今日交易量（UTC）</span><span class="val" id="de-st-vol-today">—</span></div>
+      <div class="kv"><span class="lbl">昨日交易量</span><span class="val" id="de-st-vol-yesterday">—</span></div>
+      <div class="muted" id="de-st-vol-reset" style="font-size:11px;margin-top:4px">每日 UTC 00:00（北京时间 08:00）切换</div>
+      <button class="btn btn-ghost" id="de-reset-btn" style="margin-top:8px;font-size:12px">重置统计（盈亏/成交量清零）</button>
+      <button class="btn btn-ghost" id="de-reconnect-btn" style="margin-top:8px;font-size:12px">🔌 重连交易所（不动挂单/持仓）</button>
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+      <div class="panel-title">价格 / 网格</div>
+      <div id="de-range-warn"></div>
+      <div class="chartbox"><canvas id="de-chart"></canvas></div>
+    </div>
+    <div class="grid-2" style="gap:14px">
+      <div class="panel">
+        <div class="panel-title">成交记录</div>
+        <table><thead><tr><th>时间</th><th>方向</th><th>价格</th><th>数量</th></tr></thead><tbody id="de-fills"></tbody></table>
+      </div>
+      <div class="panel">
+        <div class="panel-title">运行日志</div>
+        <div class="log" id="de-alerts"><div class="log-item muted">暂无日志</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- TAB: Extended -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="tab-ex" class="tab-panel">
+<div class="wrap">
+<div class="grid-left-right">
+  <div>
+    <div class="panel ex" style="margin-bottom:14px">
+      <div class="panel-title" style="color:var(--ex-color)">Extended · 市场与趋势</div>
+      <label>交易对</label>
+      <select id="ex-market"></select>
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label>K线周期</label>
+          <select id="ex-interval">
+            <option value="900">15m</option>
+            <option value="3600" selected>1h</option>
+            <option value="14400">4h</option>
+            <option value="86400">1d</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-ghost" style="margin:0;padding:7px" id="ex-refresh-trend">刷新</button>
+        </div>
+      </div>
+      <div style="margin-top:10px" id="ex-rec-box" class="rec-box rec-range">
+        <div class="muted">趋势分析</div>
+        <div class="rec-tag" id="ex-rec-tag">分析中…</div>
+        <div class="rec-detail" id="ex-rec-detail">—</div>
+        <button class="btn btn-ghost" style="margin-top:8px;padding:6px;font-size:12px" id="ex-apply-rec">采用推荐策略 + 自动区间</button>
+      </div>
+    </div>
+
+    <div class="panel ex">
+      <div class="panel-title" style="color:var(--ex-color)">Extended · 策略配置</div>
+      <label>网格类型</label>
+      <div class="modes" id="ex-modes">
+        <div class="mode-btn sel" data-mode="neutral">中性<small>双向震荡</small></div>
+        <div class="mode-btn" data-mode="long">做多<small>低买高止</small></div>
+        <div class="mode-btn" data-mode="short">做空<small>高空低止</small></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <span class="muted">风格</span>
+        <div class="risk-toggle" id="ex-risk-toggle">
+          <span class="risk-btn sel" data-risk="steady">稳健</span>
+          <span class="risk-btn" data-risk="aggressive">激进</span>
+        </div>
+        <span class="muted" id="ex-risk-hint">成交少·更安全</span>
+      </div>
+      <button class="btn btn-smart" id="ex-smart-fill">🎯 智能填充参数</button>
+      <div class="muted" id="ex-smart-note" style="margin:5px 0 2px"></div>
+      <div class="row">
+        <div><label>下边界</label><input id="ex-lower" type="number" step="any"></div>
+        <div><label>上边界</label><input id="ex-upper" type="number" step="any"></div>
+      </div>
+      <div class="row">
+        <div><label>网格数量</label><input id="ex-grid-count" type="number" value="20" min="2"></div>
+        <div><label>每格数量(币)</label><input id="ex-size-base" type="number" step="any" value="0.0002"></div>
+      </div>
+      <div class="row">
+        <div><label>杠杆 (x)</label><input id="ex-leverage" type="number" value="3" min="1"></div>
+        <div>
+          <label>区间外止损策略</label>
+          <select id="ex-auto-stop">
+            <option value="close" selected>冲破区间平仓</option>
+            <option value="recover">只减仓回收阶梯</option>
+          </select>
+        </div>
+      </div>
+      <div class="risk-preview" id="ex-risk-preview"></div>
+      <button class="btn btn-start" id="ex-start-btn">启动 Extended 网格</button>
+      <button class="btn btn-stop" id="ex-stop-btn" disabled>停止 + 撤单 + 平仓</button>
+      <button class="btn btn-ghost" id="ex-adjust-btn" disabled style="margin-top:8px">调整区间（不停止网格）</button>
+      <button class="btn btn-ghost" id="ex-cancel-orders-btn" style="margin-top:8px;border-color:var(--yel);color:var(--yel)">撤销所有挂单（保留持仓）</button>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel" id="ex-orphan-prompt" style="display:none;margin-bottom:14px;border:1px solid var(--yel)">
+      <div class="panel-title" style="color:var(--yel)">⚠ 检测到未托管持仓 · 请选择处理方式</div>
+      <div id="ex-orphan-info" class="muted" style="margin-bottom:10px;line-height:1.5"></div>
+      <button class="btn btn-ghost" id="ex-orphan-recover" style="border-color:var(--yel);color:var(--yel)">① 只减仓回收阶梯</button>
+      <label style="display:block;font-size:11px;color:var(--mut2);margin-top:6px"><input type="checkbox" id="ex-orphan-above-entry" style="width:auto;margin-right:6px;vertical-align:middle">回收仅在成本价以上减仓（不亏才减；否则任何反弹都分批减）</label>
+      <button class="btn btn-ghost" id="ex-orphan-regrid" style="margin-top:8px">② 按现价重开网格</button>
+      <button class="btn btn-stop" id="ex-orphan-close" style="margin-top:8px">③ 市价平仓</button>
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+      <div class="panel-title">Extended · 账户状态</div>
+      <div class="grid-2" style="gap:10px;margin-bottom:10px">
+        <div><div class="kv"><span class="lbl">运行状态</span><span class="val" id="ex-st-run">未运行</span></div>
+          <div class="kv"><span class="lbl">最新价</span><span class="val" id="ex-st-price">—</span></div>
+          <div class="kv"><span class="lbl">账户余额</span><span class="val" id="ex-st-bal">—</span></div>
+          <div class="kv"><span class="lbl">权益</span><span class="val" id="ex-st-eq">—</span></div></div>
+        <div><div class="kv"><span class="lbl">持仓</span><span class="val" id="ex-st-pos">—</span></div>
+          <div class="kv"><span class="lbl">持仓均价</span><span class="val" id="ex-st-entry">—</span></div>
+          <div class="kv"><span class="lbl">已实现盈亏</span><span class="val" id="ex-st-rpnl">—</span></div>
+          <div class="kv"><span class="lbl">未实现盈亏</span><span class="val" id="ex-st-upnl">—</span></div></div>
+      </div>
+      <div class="kv"><span class="lbl">总盈亏 / 收益率</span><span class="val" id="ex-st-total">—</span></div>
+      <div class="kv"><span class="lbl">挂单数 / 完成格</span><span class="val" id="ex-st-orders">—</span></div>
+      <button class="btn btn-ghost" id="ex-reset-btn" style="margin-top:8px;font-size:12px">重置统计（盈亏/成交量清零）</button>
+      <button class="btn btn-ghost" id="ex-reconnect-btn" style="margin-top:8px;font-size:12px">🔌 重连交易所（不动挂单/持仓）</button>
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+      <div class="panel-title">价格 / 网格</div>
+      <div id="ex-range-warn"></div>
+      <div class="chartbox"><canvas id="ex-chart"></canvas></div>
+    </div>
+    <div class="grid-2" style="gap:14px">
+      <div class="panel">
+        <div class="panel-title">成交记录</div>
+        <table><thead><tr><th>时间</th><th>方向</th><th>价格</th><th>数量</th></tr></thead><tbody id="ex-fills"></tbody></table>
+      </div>
+      <div class="panel">
+        <div class="panel-title">运行日志</div>
+        <div class="log" id="ex-alerts"><div class="log-item muted">暂无日志</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- TAB: RISEx -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="tab-rs" class="tab-panel">
+<div class="wrap">
+<div class="grid-left-right">
+  <div>
+    <div class="panel rs" style="margin-bottom:14px">
+      <div class="panel-title" style="color:var(--rs-color)">RISEx · 市场与趋势</div>
+      <label>交易对</label>
+      <select id="rs-market"></select>
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label>K线周期</label>
+          <select id="rs-interval">
+            <option value="900">15m</option>
+            <option value="3600" selected>1h</option>
+            <option value="14400">4h</option>
+            <option value="86400">1d</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-ghost" style="margin:0;padding:7px" id="rs-refresh-trend">刷新</button>
+        </div>
+      </div>
+      <div style="margin-top:10px" id="rs-rec-box" class="rec-box rec-range">
+        <div class="muted">趋势分析</div>
+        <div class="rec-tag" id="rs-rec-tag">分析中…</div>
+        <div class="rec-detail" id="rs-rec-detail">—</div>
+        <button class="btn btn-ghost" style="margin-top:8px;padding:6px;font-size:12px" id="rs-apply-rec">采用推荐策略 + 自动区间</button>
+      </div>
+    </div>
+
+    <div class="panel rs">
+      <div class="panel-title" style="color:var(--rs-color)">RISEx · 策略配置</div>
+      <label>网格类型</label>
+      <div class="modes" id="rs-modes">
+        <div class="mode-btn sel" data-mode="neutral">中性<small>双向震荡</small></div>
+        <div class="mode-btn" data-mode="long">做多<small>低买高止</small></div>
+        <div class="mode-btn" data-mode="short">做空<small>高空低止</small></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <span class="muted">风格</span>
+        <div class="risk-toggle" id="rs-risk-toggle">
+          <span class="risk-btn sel" data-risk="steady">稳健</span>
+          <span class="risk-btn" data-risk="aggressive">激进</span>
+        </div>
+        <span class="muted" id="rs-risk-hint">成交少·更安全</span>
+      </div>
+      <button class="btn btn-smart" id="rs-smart-fill">🎯 智能填充参数</button>
+      <div class="muted" id="rs-smart-note" style="margin:5px 0 2px"></div>
+      <div class="row">
+        <div><label>下边界</label><input id="rs-lower" type="number" step="any"></div>
+        <div><label>上边界</label><input id="rs-upper" type="number" step="any"></div>
+      </div>
+      <div class="row">
+        <div><label>网格数量</label><input id="rs-grid-count" type="number" value="20" min="2"></div>
+        <div><label>每格数量(币)</label><input id="rs-size-base" type="number" step="any" value="0.0002"></div>
+      </div>
+      <div class="row">
+        <div><label>杠杆 (x)</label><input id="rs-leverage" type="number" value="3" min="1"></div>
+        <div>
+          <label>区间外止损策略</label>
+          <select id="rs-auto-stop">
+            <option value="close" selected>冲破区间平仓</option>
+            <option value="recover">只减仓回收阶梯</option>
+          </select>
+        </div>
+      </div>
+      <div class="risk-preview" id="rs-risk-preview"></div>
+      <button class="btn btn-start" id="rs-start-btn">启动 RISEx 网格</button>
+      <button class="btn btn-stop" id="rs-stop-btn" disabled>停止 + 撤单 + 平仓</button>
+      <button class="btn btn-ghost" id="rs-adjust-btn" disabled style="margin-top:8px">调整区间（不停止网格）</button>
+      <button class="btn btn-ghost" id="rs-cancel-orders-btn" style="margin-top:8px;border-color:var(--yel);color:var(--yel)">撤销所有挂单（保留持仓）</button>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel" id="rs-orphan-prompt" style="display:none;margin-bottom:14px;border:1px solid var(--yel)">
+      <div class="panel-title" style="color:var(--yel)">⚠ 检测到未托管持仓 · 请选择处理方式</div>
+      <div id="rs-orphan-info" class="muted" style="margin-bottom:10px;line-height:1.5"></div>
+      <button class="btn btn-ghost" id="rs-orphan-recover" style="border-color:var(--yel);color:var(--yel)">① 只减仓回收阶梯</button>
+      <label style="display:block;font-size:11px;color:var(--mut2);margin-top:6px"><input type="checkbox" id="rs-orphan-above-entry" style="width:auto;margin-right:6px;vertical-align:middle">回收仅在成本价以上减仓（不亏才减；否则任何反弹都分批减）</label>
+      <button class="btn btn-ghost" id="rs-orphan-regrid" style="margin-top:8px">② 按现价重开网格</button>
+      <button class="btn btn-stop" id="rs-orphan-close" style="margin-top:8px">③ 市价平仓</button>
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+      <div class="panel-title">RISEx · 账户状态</div>
+      <div class="grid-2" style="gap:10px;margin-bottom:10px">
+        <div><div class="kv"><span class="lbl">运行状态</span><span class="val" id="rs-st-run">未运行</span></div>
+          <div class="kv"><span class="lbl">最新价</span><span class="val" id="rs-st-price">—</span></div>
+          <div class="kv"><span class="lbl">账户余额</span><span class="val" id="rs-st-bal">—</span></div>
+          <div class="kv"><span class="lbl">权益</span><span class="val" id="rs-st-eq">—</span></div></div>
+        <div><div class="kv"><span class="lbl">持仓</span><span class="val" id="rs-st-pos">—</span></div>
+          <div class="kv"><span class="lbl">持仓均价</span><span class="val" id="rs-st-entry">—</span></div>
+          <div class="kv"><span class="lbl">已实现盈亏</span><span class="val" id="rs-st-rpnl">—</span></div>
+          <div class="kv"><span class="lbl">未实现盈亏</span><span class="val" id="rs-st-upnl">—</span></div></div>
+      </div>
+      <div class="kv"><span class="lbl">总盈亏 / 收益率</span><span class="val" id="rs-st-total">—</span></div>
+      <div class="kv"><span class="lbl">挂单数 / 完成格</span><span class="val" id="rs-st-orders">—</span></div>
+      <button class="btn btn-ghost" id="rs-reset-btn" style="margin-top:8px;font-size:12px">重置统计（盈亏/成交量清零）</button>
+      <button class="btn btn-ghost" id="rs-reconnect-btn" style="margin-top:8px;font-size:12px">🔌 重连交易所（不动挂单/持仓）</button>
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+      <div class="panel-title">价格 / 网格</div>
+      <div id="rs-range-warn"></div>
+      <div class="chartbox"><canvas id="rs-chart"></canvas></div>
+    </div>
+    <div class="grid-2" style="gap:14px">
+      <div class="panel">
+        <div class="panel-title">成交记录</div>
+        <table><thead><tr><th>时间</th><th>方向</th><th>价格</th><th>数量</th></tr></thead><tbody id="rs-fills"></tbody></table>
+      </div>
+      <div class="panel">
+        <div class="panel-title">运行日志</div>
+        <div class="log" id="rs-alerts"><div class="log-item muted">暂无日志</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- TAB: IP配置 -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- TAB: AI 助手 -->
+<div id="tab-ai" class="tab-panel">
+<div class="wrap" style="max-width:860px">
+  <div class="panel" style="margin-top:4px">
+    <div class="panel-title">🤖 AI 接入配置</div>
+    <p class="muted" style="margin-bottom:12px;line-height:1.6">
+      支持三种协议：<b>openai</b>（OpenAI / DeepSeek / Kimi / 通义 / 智谱 / OpenRouter / Ollama 等所有兼容服务，填对应接口地址即可）、<b>anthropic</b>（Claude）、<b>gemini</b>（Google）。<br>
+      保存后立即生效、无需重启。留空的字段不会覆盖 .env 里已有的值（清空请直接编辑 .env）。
+    </p>
+    <div class="ai-grid">
+      <div><label>服务商（选择后自动填写协议 / 接口地址 / 推荐模型）</label>
+        <select id="ai-vendor" onchange="aiVendorChange()"><option value="">-- 请选择服务商 --</option></select></div>
+      <div><label>接口地址 AI_BASE_URL（选服务商后自动填写，可改）</label><input id="ai-baseurl" placeholder="例：https://api.deepseek.com/v1"></div>
+      <div><label>API Key（AI_API_KEY）</label><input id="ai-key" type="password" placeholder="sk-..."></div>
+      <div><label>主模型（AI_MODEL，可下拉选择或手动输入）</label><input id="ai-model" list="ai-model-list" placeholder="选服务商后可下拉选择"></div>
+      <div><label>小模型 AI_MODEL_SMALL（哨兵巡检用，省钱，可留空）</label><input id="ai-model-small" list="ai-model-list" placeholder="选服务商后可下拉选择"></div>
+      <datalist id="ai-model-list"></datalist>
+      <div><label>哨兵巡检间隔（分钟，0=关闭）</label><input id="ai-sentinel-min" type="number" min="0" placeholder="5"></div>
+      <div><label>日报生成时间（0-23 整点）</label><input id="ai-report-hour" type="number" min="0" max="23" placeholder="20"></div>
+      <div><label>Telegram Bot Token（推送用，可选）</label><input id="ai-tg-token" type="password" placeholder="123456:ABC-..."></div>
+      <div><label>Telegram Chat ID（可选）</label><input id="ai-tg-chat" placeholder="例：123456789"></div>
+      <div><label>通用 Webhook（可选，POST {"text":...}）</label><input id="ai-webhook" placeholder="https://..."></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-smart" style="margin:0;width:auto;padding:8px 22px" onclick="aiSaveConfig(this)">保存配置</button>
+      <button class="btn btn-ghost" style="margin:0;width:auto;padding:8px 22px" onclick="aiTest(this)">测试连接</button>
+      <button class="btn btn-ghost" style="margin:0;width:auto;padding:8px 22px" onclick="tgTest(this)">测试 Telegram</button>
+    </div>
+    <div id="ai-cfg-status" class="muted" style="margin-top:8px;font-size:12px">—</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">🛡 风控哨兵<span id="ai-sent-badge"></span></div>
+    <p class="muted" style="margin-bottom:8px">按设定间隔自动巡检三所状态（健康度/挂单同步/保证金/出区间/告警），发现问题推送通知。</p>
+    <div id="ai-sentinel-box" class="ai-box muted">尚无巡检结果</div>
+    <button class="btn btn-ghost" onclick="aiSentinelRun(this)" style="margin-top:10px;font-size:12px">立即巡检一次</button>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">🚨 出区间 AI 建议</div>
+    <div id="ai-oor-box" class="ai-box muted">价格冲出网格区间时自动触发分析（平仓/回收/扩区间/维持），并推送通知；已配置的自动策略照常执行，AI 建议仅供复核。</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">📈 市况分析（当前适不适合跑网格）</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="margin:0;width:auto;padding:7px 16px;font-size:12px" onclick="aiAnalyze('de', this)">分析 PopDEX</button>
+    </div>
+    <div id="ai-analyze-box" class="ai-box muted" style="margin-top:10px">综合 4小时/1小时/15分钟 三个周期的指标判断 PopDEX 市况，给出区间/格数/间距建议。</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">📋 运行复盘日报</div>
+    <div id="ai-report-box" class="ai-box muted">每天到点自动生成并推送；也可手动触发。</div>
+    <button class="btn btn-ghost" onclick="aiReport(this)" style="margin-top:10px;font-size:12px">立即生成日报</button>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">💬 对话操控</div>
+    <p class="muted" style="margin-bottom:8px">AI 基于 PopDEX 实时状态回答问题；涉及操作时它只能“提议”，你点确认后才会通过常规接口执行（保证金/杠杆等硬性风控不受 AI 影响）。</p>
+    <div id="ai-chatlog" class="ai-chatlog"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input id="ai-chat-input" placeholder="例：PopDEX 现在适合跑网格吗？ / 调整 PopDEX 网格区间" style="flex:1" onkeydown="if(event.key==='Enter')aiChatSend()">
+      <button class="btn btn-smart" style="margin:0;width:auto;padding:8px 18px" onclick="aiChatSend()">发送</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="tab-settings" class="tab-panel">
+<div class="wrap" style="max-width:720px">
+  <div class="panel" style="margin-top:4px">
+    <div class="panel-title">代理 / IP 配置</div>
+    <p class="muted" style="margin-bottom:14px;line-height:1.6">
+      配置代理后，服务器重启才能生效（修改 <code style="background:var(--bg2);padding:1px 5px;border-radius:3px">.env</code> 文件中对应字段）。<br>
+      下方"测试连接"按钮会通过当前已配置的代理检测出口IP，无需重启。<br>
+      <strong style="color:var(--yel)">全局代理</strong>优先级最高，会覆盖各交易所独立代理。
+    </p>
+
+    <!-- 全局代理 -->
+    <div class="ip-section">
+      <div class="ip-section-title">🌐 全局代理（GLOBAL_PROXY）</div>
+      <p class="muted" style="margin-bottom:8px">同时应用于所有三个交易所。留空则各交易所使用各自配置。</p>
+      <div class="ip-row">
+        <div>
+          <label>代理地址</label>
+          <input id="ip-global" type="text" placeholder="例：http://127.0.0.1:7890 或 socks5://user:pass@host:port">
+        </div>
+        <button class="ip-apply-btn" onclick="applyProxy('global')">写入 .env</button>
+      </div>
+      <div class="ip-status" id="ip-global-status"></div>
+    </div>
+
+    <!-- PopDEX 代理 -->
+    <div class="ip-section">
+      <div class="ip-section-title" style="color:var(--de-color)">⬡ PopDEX 独立代理（DECIBEL_PROXY）</div>
+      <p class="muted" style="margin-bottom:8px">仅用于 PopDEX 交易所。支持 HTTP(S) 和 SOCKS5（含用户名密码认证）。</p>
+      <div class="ip-row">
+        <div>
+          <label>代理地址</label>
+          <input id="ip-de" type="text" placeholder="例：socks5://user:pass@127.0.0.1:1080">
+        </div>
+        <button class="ip-apply-btn" onclick="applyProxy('de')">写入 .env</button>
+      </div>
+      <div class="ip-status" id="ip-de-status"></div>
+    </div>
+
+    <!-- Extended 代理（PopDEX-only 界面隐藏） -->
+    <div class="ip-section project-ex">
+      <div class="ip-section-title" style="color:var(--ex-color)">⬡ Extended 独立代理（EXTENDED_PROXY）</div>
+      <p class="muted" style="margin-bottom:8px">仅用于 Extended 交易所。</p>
+      <div class="ip-row">
+        <div>
+          <label>代理地址</label>
+          <input id="ip-ex" type="text" placeholder="例：http://127.0.0.1:7890">
+        </div>
+        <button class="ip-apply-btn" onclick="applyProxy('ex')">写入 .env</button>
+      </div>
+      <div class="ip-status" id="ip-ex-status"></div>
+    </div>
+
+    <!-- RISEx 代理（PopDEX-only 界面隐藏） -->
+    <div class="ip-section project-rs">
+      <div class="ip-section-title" style="color:var(--rs-color)">⬡ RISEx 独立代理（RISEX_PROXY）</div>
+      <p class="muted" style="margin-bottom:8px">仅用于 RISEx 交易所。</p>
+      <div class="ip-row">
+        <div>
+          <label>代理地址</label>
+          <input id="ip-rs" type="text" placeholder="例：http://127.0.0.1:7890">
+        </div>
+        <button class="ip-apply-btn" onclick="applyProxy('rs')">写入 .env</button>
+      </div>
+      <div class="ip-status" id="ip-rs-status"></div>
+    </div>
+
+    <!-- 测试连接 -->
+    <div class="ip-section" style="border-color:var(--border2)">
+      <div class="ip-section-title">🔍 代理连接测试</div>
+      <p class="muted" style="margin-bottom:8px">验证当前服务器的代理是否正常工作，并显示出口 IP。</p>
+      <button class="btn btn-ghost" style="margin:0;padding:8px 20px;width:auto;font-size:12px" onclick="testProxy()">检测当前出口 IP</button>
+      <div id="ip-test-result" style="margin-top:10px;font-size:13px"></div>
+    </div>
+
+    <div class="warn-box" style="margin-top:4px">
+      ⚠ 写入 .env 后需<strong>重启服务器</strong>才能让代理生效。<br>
+      不同交易所配置不同代理时，因 Node.js 技术限制，实际生效代理为全局设置（GLOBAL_PROXY）。<br>
+      如需严格隔离，建议分开部署各交易所版本。
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- JavaScript -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<script>
+// ── 工具函数 ────────────────────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+const fmt = (v, d=2) => v == null ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const signed = (v) => v == null ? '—' : (v >= 0 ? '+' : '') + fmt(v);
+const cls = (v) => v == null ? '' : (v >= 0 ? 'up' : 'down');
+const round = (x) => Math.round(x * 100) / 100;
+const pnlHtml = (v) => v == null ? '—' : `<span class="${cls(v)}">${signed(v)}</span>`;
+
+const RISK = {
+  steady:     { rMul:4, rMin:.02, rMax:.06, sMul:.5, sMin:.5, sMax:1, lev:{hi:2,mid:2,lo:3}, budget:.70, skew:1.2, hint:'成交少·更安全·覆盖广' },
+  aggressive: { rMul:2.5, rMin:.015, rMax:.04, sMul:.25, sMin:.2, sMax:.5, lev:{hi:3,mid:5,lo:8}, budget:.90, skew:1.4, hint:'成交频繁·收益与风险更高' },
+};
+
+// ── Tab 切换 ────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  $('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn')[['overview','de','ex','rs','ai','settings'].indexOf(name)].classList.add('active');
+  if (name === 'ai') aiRefreshStatus();
+}
+
+// ── 时钟 ────────────────────────────────────────────────────────────────────
+setInterval(() => { $('hdr-time').textContent = new Date().toLocaleTimeString('zh-CN'); }, 1000);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 各交易所控制逻辑（工厂函数）
+// ══════════════════════════════════════════════════════════════════════════════
+let popdexWalletAddress='';
+function walletProvider(){if(window.okxwallet?.ethereum)return window.okxwallet.ethereum;if(window.okxwallet)return window.okxwallet;if(window.ethereum)return window.ethereum;throw Error('未检测到钱包扩展')}
+async function connectPopdexWallet(){const st=$('popdex-wallet-status');try{const p=walletProvider(),a=(await p.request({method:'eth_requestAccounts'}))[0];const chain=Number.parseInt(await p.request({method:'eth_chainId'}),16);if(chain!==2184)throw Error('请切换到 PopDEX 主网，Chain ID 2184');popdexWalletAddress=a;st.textContent='钱包已连接：'+a+'，账户读取入口已准备';st.className='up'}catch(e){st.textContent='连接失败：'+e.message;st.className='down'}}
+async function authorizePopdexAgent(){const st=$('popdex-wallet-status');st.textContent='Agent 私钥由后端 .env 管理；如链上已授权，无需重复授权。';st.className='up'}
+$('popdex-connect-wallet').onclick=connectPopdexWallet;$('popdex-authorize-agent').onclick=authorizePopdexAgent;
+
+function makeExchangeCtrl(prefix, chartId) {
+  let selectedMode = 'neutral';
+  let riskProfile = 'steady';
+  let markets = [];
+  let curTrend = null;
+  let lastState = null;
+  let chart = null;
+  let syncedConfigKey = null;
+
+  const P = (suf) => $(prefix + '-' + suf);
+
+  // mode buttons
+  P('modes').querySelectorAll('.mode-btn').forEach(b => b.onclick = () => {
+    P('modes').querySelectorAll('.mode-btn').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel'); selectedMode = b.dataset.mode;
+    sizeByBalance();
+    updateRiskPreview();
+  });
+
+  // risk toggle
+  P('risk-toggle').querySelectorAll('.risk-btn').forEach(b => b.onclick = () => {
+    P('risk-toggle').querySelectorAll('.risk-btn').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel'); riskProfile = b.dataset.risk;
+    P('risk-hint').textContent = RISK[riskProfile].hint;
+    if (curTrend?.price) applyStrategyByRisk();
+  });
+
+  function sizeByBalance() {
+    const p = lastState?.lastPrice || curTrend?.price;
+    if (p) autoSizePerGrid(p, +P('leverage').value || 3);
+  }
+
+  async function loadMarkets() {
+    try {
+      const r = await fetch('/api/symbols?category=Futures');
+      const j = await r.json();
+      markets = prefix === 'de'
+        ? (j.data || []).filter(x => String(x.status || '').toLowerCase() === 'trading').map(x => ({marketId:x.symbol,displayName:x.symbol,baseToken:x.baseToken,quoteToken:x.quoteToken,minOrderSize:Number(x.minQty || x.lotSize || .0002),stepSize:Number(x.lotSize || x.minQty || .0002)}))
+        : j.markets;
+      const hdrBadge = $('hdr-' + prefix);
+      if (hdrBadge) { hdrBadge.textContent = 'POPDEX: ' + ((j.mode || 'live').toUpperCase()); hdrBadge.className = 'badge ' + ((j.mode === 'live') ? 'badge-live' : 'badge-paper'); }
+      P('market').innerHTML = markets.map(m => `<option value="${m.marketId}">${m.displayName}</option>`).join('');
+      if (markets[0]) P('size-base').value = 0.0002;
+      if (lastState?.running && lastState?.config) await syncFormToRunningConfig(lastState); else await refreshTrend();
+    } catch (e) { console.error(`[${prefix}] loadMarkets failed:`, e.message); }
+  }
+
+  let trendRefreshing = false;
+  async function refreshTrend() {
+    if (trendRefreshing) return;
+    const marketId = P('market').value;
+    if (!marketId) return;
+    trendRefreshing = true;
+    P('rec-tag').textContent = '分析中…';
+    try {
+      const r = await fetch(prefix === 'de' ? `/api/candles?symbol=${encodeURIComponent(P('market').value)}&category=Futures&interval=${P('interval').value === '3600' ? '1H' : P('interval').value === '14400' ? '4H' : '15m'}&limit=120` : `/api/${prefix}/trend?marketId=${marketId}&intervalSec=${P('interval').value}`, { cache: 'no-store' });
+      const j = await r.json();
+      if (prefix === 'de') {
+        const candles = (j.data || []).map(x => ({time:+x.time,open:+x.open,high:+x.high,low:+x.low,close:+x.close}));
+        const price = Number(candles.at(-1)?.close);
+        curTrend = {trend:'range',recommended:'neutral',strength:0,atrPct:.8,price,detail:'PopDEX K线已加载，可采用推荐区间或手动设置。'};
+        renderTrend(curTrend); if (candles.length >= 2) drawChart(candles); if (!P('lower').value) applyAutoRange();
+      } else {
+        if (j.error) throw new Error(j.error); curTrend = j.analysis; renderTrend(j.analysis); if (Array.isArray(j.candles) && j.candles.length >= 2) drawChart(j.candles); if (!P('lower').value) applyAutoRange();
+      }
+    } catch (e) {
+      P('rec-tag').textContent = '行情暂时重试中';
+      P('rec-detail').textContent = '交易连接仍在运行，K线接口暂时没有返回完整数据（' + e.message + '），系统将自动重试。';
+    } finally {
+      trendRefreshing = false;
+    }
+  }
+
+  // Keep the displayed trend/K-line current while the page remains open.
+  // This is frontend-only and does not change orders, positions, or bot polling.
+  setInterval(() => refreshTrend(), 30000);
+
+  function renderTrend(a) {
+    const map = { up: ['上升趋势 ↗','rec-up','做多'], down: ['下降趋势 ↘','rec-down','做空'], range: ['震荡 ↔','rec-range','中性'] };
+    const [txt, cls2] = map[a.trend];
+    P('rec-box').className = 'rec-box ' + cls2;
+    P('rec-tag').innerHTML = `${txt} <span class="muted" style="font-size:11px">推荐：${map[a.trend][2]}网格 · 强度 ${(a.strength*100).toFixed(0)}%</span>`;
+    P('rec-detail').textContent = a.detail;
+    P('modes').querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('rec', b.dataset.mode === a.recommended));
+  }
+
+  P('apply-rec').onclick = () => {
+    if (!curTrend) return;
+    setMode(curTrend.recommended);
+    applyAutoRange(); updateRiskPreview();
+  };
+
+  P('smart-fill').onclick = async () => {
+    const btn = P('smart-fill'); const old = btn.textContent;
+    btn.disabled = true; btn.textContent = '分析行情中...';
+    try {
+      await refreshTrend();
+      if (!curTrend?.price) { P('smart-note').textContent = '无法获取行情，请稍后重试。'; return; }
+      setMode(curTrend.recommended);
+      applyStrategyByRisk();
+    } catch (e) {
+      P('smart-note').textContent = '智能填充失败：' + e.message;
+    } finally { btn.disabled = false; btn.textContent = old; }
+  };
+
+  function applyStrategyByRisk() {
+    if (!curTrend?.price) return;
+    const r = RISK[riskProfile];
+    applyAutoRange();
+    const atrPct = curTrend.atrPct || 0.8;
+    const targetSpacingPct = Math.min(r.sMax, Math.max(r.sMin, atrPct * r.sMul));
+    const lo = +P('lower').value, hi = +P('upper').value, p = curTrend.price;
+    let n = Math.round(((hi-lo)/p*100)/targetSpacingPct);
+    n = Math.min(50, Math.max(10, n));
+    P('grid-count').value = n;
+    const lev = atrPct > 3 ? r.lev.hi : atrPct > 1.5 ? r.lev.mid : r.lev.lo;
+    P('leverage').value = lev;
+    autoSizePerGrid(p, lev);
+    updateRiskPreview();
+    const modeTxt = curTrend.recommended === 'long' ? '做多' : curTrend.recommended === 'short' ? '做空' : '中性';
+    P('smart-note').innerHTML = `✅ [${riskProfile === 'aggressive' ? '激进' : '稳健'}] <b>${modeTxt}网格</b> · ${P('grid-count').value} 格 · ${P('leverage').value}x`;
+  }
+
+  function setMode(mode) {
+    P('modes').querySelectorAll('.mode-btn').forEach(b => {
+      const sel = b.dataset.mode === mode;
+      b.classList.toggle('sel', sel); if (sel) selectedMode = mode;
+    });
+  }
+
+  async function syncFormToRunningConfig(s) {
+    if (!s?.running || !s.config || !markets.length) return;
+    const key = [s.config.marketId, s.config.mode, s.config.lower, s.config.upper, s.config.gridCount, s.config.sizeBase, s.config.leverage].join('|');
+    if (key === syncedConfigKey) return;
+    if (!markets.some(m => Number(m.marketId) === Number(s.config.marketId))) return;
+    syncedConfigKey = key;
+    P('market').value = String(s.config.marketId);
+    P('lower').value = s.config.lower;
+    P('upper').value = s.config.upper;
+    P('grid-count').value = s.config.gridCount;
+    P('size-base').value = s.config.sizeBase;
+    P('leverage').value = s.config.leverage;
+    if (s.config.outOfRangeAction) P('auto-stop').value = s.config.outOfRangeAction;
+    setMode(s.config.mode || 'neutral');
+    updateRiskPreview();
+    await refreshTrend();
+  }
+
+  function autoSizePerGrid(price, lev) {
+    const mkt = markets.find(m => String(m.marketId) === String(P('market').value));
+    const bal = lastState && typeof lastState.balance === 'number' ? lastState.balance : null;
+    if (!mkt || !bal || !price) return;
+    const step = mkt.stepSize || 0.0002;
+    const minSz = mkt.minOrderSize || step;
+    let n = +P('grid-count').value || 20;
+    const budgetNotional = bal * lev * (RISK[riskProfile]?.budget || 0.4);
+    let size = Math.floor((budgetNotional / n / price) / step) * step;
+    if (size < minSz) { size = minSz; const maxN = Math.max(2, Math.floor(budgetNotional / (minSz * price))); n = Math.min(n, maxN); P('grid-count').value = n; }
+    P('size-base').value = +size.toFixed(8);
+  }
+
+  function applyAutoRange() {
+    if (!curTrend?.price) return;
+    const p = curTrend.price;
+    const atr = curTrend.atrPct || 0.8;
+    const r = RISK[riskProfile];
+    const halfPct = Math.min(r.rMax, Math.max(r.rMin, (atr/100)*r.rMul));
+    let lo = p*(1-halfPct), hi = p*(1+halfPct);
+    if (selectedMode === 'long')  { hi = p*(1+halfPct*r.skew); lo = p*(1-halfPct*(2-r.skew)); }
+    if (selectedMode === 'short') { lo = p*(1-halfPct*r.skew); hi = p*(1+halfPct*(2-r.skew)); }
+    P('lower').value = +lo.toPrecision(6); P('upper').value = +hi.toPrecision(6);
+    updateRiskPreview();
+  }
+
+  function updateRiskPreview() {
+    const lo = +P('lower').value, hi = +P('upper').value, n = +P('grid-count').value,
+          sz = +P('size-base').value, lev = +P('leverage').value;
+    if (!(hi > lo) || !n || !sz) { P('risk-preview').textContent = ''; return; }
+    const mid = (lo+hi)/2, spacing = (hi-lo)/n;
+    const notional = n*sz*mid, margin = notional/lev;
+    P('risk-preview').innerHTML = `单格间距 <b>${spacing.toPrecision(4)}</b>（${(spacing/mid*100).toFixed(2)}%）· 每格毛利 <b>${(spacing*sz).toPrecision(3)}</b><br>名义敞口 <b>${notional.toFixed(0)}</b> · 约需保证金 <b>${margin.toFixed(0)}</b> USDC（${lev}x）`;
+  }
+
+  ['lower','upper','grid-count','size-base','leverage'].forEach(id => P(id).addEventListener('input', updateRiskPreview));
+  ['grid-count','leverage'].forEach(id => P(id).addEventListener('change', sizeByBalance));
+
+  P('start-btn').onclick = async () => {
+    const lower = +P('lower').value, upper = +P('upper').value, market = String(P('market').value || 'BTCUSDT');
+    const body = {mode:'live',symbol:market, gridMode:selectedMode, lower, upper, gridCount:+P('grid-count').value, sizeBase:+P('size-base').value, leverage:+P('leverage').value, apiCategory:'Futures'};
+    if (!popdexWalletAddress) { alert('请先连接钱包读取主账户地址；Agent 链上授权无需重复。'); return; }
+    const r = await fetch('/api/start', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const j=await r.json(); if(j.error) alert('实盘启动失败：'+j.error);
+  };
+
+  P('stop-btn').onclick = async () => {
+    if (!confirm('确认停止网格？\n只停止自动运行，不会自动撤销已有实盘挂单，也不会平仓。')) return;
+    const endpoint = prefix === 'de' ? '/api/stop' : `/api/${prefix}/stop`;
+    const r = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const j = await r.json();
+    if (j.error) alert('停止失败：' + j.error);
+  };
+
+  P('adjust-btn').onclick = async () => {
+    const lower = +P('lower').value, upper = +P('upper').value;
+    if (!(upper > lower)) { alert('请先填写有效的上/下边界'); return; }
+    if (!confirm(`确认将运行中的网格区间调整为 [${lower}, ${upper}]？\n会撤销现有挂单并按新区间重新挂单（持仓保留、网格不停止）。`)) return;
+    const r = await fetch(`/api/${prefix}/adjust`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ lower, upper }) });
+    const j = await r.json();
+    if (j.error) alert('调整失败：' + j.error);
+  };
+
+  P('reset-btn').onclick = async () => {
+    if (!confirm('确认重置该交易所的统计？\n已实现盈亏、收益率、成交量、完成格数将清零，并以当前权益为新基准。\n（不影响持仓与挂单）')) return;
+    const r = await fetch(`/api/${prefix}/reset`, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const j = await r.json();
+    if (j.error) alert('重置失败：' + j.error);
+  };
+
+  if (P('reconnect-btn')) P('reconnect-btn').onclick = () => reconnectEx(prefix, P('reconnect-btn'));
+
+  P('cancel-orders-btn').onclick = async () => {
+    if (!confirm('确认一键撤销该交易所的全部挂单？\n持仓不受影响（不会平仓）。网格将停止，需要时可重新启动。')) return;
+    const endpoint = prefix === 'de' ? '/api/cancel-orders' : `/api/${prefix}/cancel-orders`;
+    const r = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const j = await r.json();
+    if (j.error) alert('撤单失败：' + j.error);
+  };
+
+  // ── 未托管持仓处置（开机扫描后手动选择）──
+  P('orphan-recover').onclick = async () => {
+    const aboveEntryOnly = !!(P('orphan-above-entry') && P('orphan-above-entry').checked);
+    const modeTxt = aboveEntryOnly ? '仅在成本价以上（不亏）分批减仓' : '任何反弹都分批减仓';
+    if (!confirm(`对当前持仓启用「只减仓回收阶梯」？\n${modeTxt}；挂 reduce-only 单只减不加、不自动止损，需自行控制风险。`)) return;
+    const marketId = lastState?.config?.marketId;
+    const r = await fetch(`/api/${prefix}/start-recovery`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ marketId, aboveEntryOnly }) });
+    const j = await r.json();
+    if (j.error) alert('启用失败：' + j.error);
+  };
+  P('orphan-regrid').onclick = async () => {
+    const marketId = lastState?.config?.marketId;
+    if (marketId != null) P('market').value = String(marketId);
+    await refreshTrend();
+    setMode('neutral'); applyStrategyByRisk();
+    const lower = +P('lower').value, upper = +P('upper').value, n = +P('grid-count').value, sz = +P('size-base').value, lev = +P('leverage').value;
+    if (!(upper > lower) || !n || !sz) { alert('无法自动计算区间，请在左侧手动填写参数后点"启动"。'); return; }
+    if (!confirm(`按现价重开网格：区间 [${lower}, ${upper}]，${n} 格，每格 ${sz}，${lev}x。\n现有持仓将作为网格库存保留。继续？`)) return;
+    const body = { marketId: +P('market').value, mode: 'neutral', lower, upper, gridCount: n, sizeBase: sz, leverage: lev, outOfRangeAction: P('auto-stop').value };
+    const r = await fetch(`/api/${prefix}/start`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    const j = await r.json();
+    if (j.error) alert('启动失败：' + j.error);
+  };
+  P('orphan-close').onclick = async () => {
+    if (!confirm('确认市价平掉当前持仓？\n将撤销该市场全部挂单并立即市价平仓（此操作不可撤销）。')) return;
+    const marketId = lastState?.config?.marketId;
+    const r = await fetch(`/api/${prefix}/close-position`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ marketId }) });
+    const j = await r.json();
+    if (j.error) alert('平仓失败：' + j.error);
+  };
+
+  P('market').onchange = async () => {
+    // Market-specific price fields must never leak across symbols (e.g. MEGA range on BTC).
+    curTrend = null;
+    P('lower').value = '';
+    P('upper').value = '';
+    P('smart-note').textContent = '交易对已切换，正在按新市场行情重算区间…';
+    await refreshTrend();
+    if (curTrend?.price) {
+      applyStrategyByRisk();
+      P('smart-note').textContent = `✅ 已按 ${P('market').selectedOptions[0]?.textContent || '新市场'} 最新价重新计算参数`;
+    }
+  };
+  P('interval').onchange = refreshTrend;
+  P('refresh-trend').onclick = refreshTrend;
+
+  // SSE
+  const es = prefix === 'de' ? null : new EventSource(`/api/${prefix}/stream`);
+  if (es) es.onmessage = (e) => render(JSON.parse(e.data));
+
+  function render(s) {
+    lastState = s;
+    syncFormToRunningConfig(s).catch(e => console.error(`[${prefix}] sync live config failed:`, e.message));
+    const run = s.running;
+    P('start-btn').disabled = run;
+    P('stop-btn').disabled = false;
+    if (P('adjust-btn')) P('adjust-btn').disabled = !run;
+    P('st-run').innerHTML = run ? `<span class="badge badge-run">运行中（${modeLabel(s.config?.mode)}）</span>` : '<span class="badge badge-stop">未运行</span>';
+    P('st-price').textContent = s.lastPrice ?? '—';
+    P('st-bal').textContent = s.balance == null ? '—' : Number(s.balance).toFixed(2);
+    P('st-eq').textContent = s.equity == null ? '—' : Number(s.equity).toFixed(2);
+
+    if (s.position) {
+      const long = s.position.sizeBase > 0;
+      const levTxt = s.position.leverage ? ` <span class="muted">@${s.position.leverage}x</span>` : '';
+      P('st-pos').innerHTML = `<span class="${long?'up':'down'}">${long?'多':'空'} ${Math.abs(Number(s.position.sizeBase)).toFixed(4)}</span>${levTxt}`;
+      P('st-entry').textContent = s.position.entryPrice == null ? '—' : Number(s.position.entryPrice).toFixed(2);
+      P('st-upnl').innerHTML = pnlHtml(s.position.unrealizedPnl);
+    } else {
+      P('st-pos').textContent = '无持仓';
+      P('st-entry').textContent = '—';
+      P('st-upnl').textContent = '—';
+    }
+    P('st-rpnl').innerHTML = pnlHtml(s.realizedPnl);
+    const orphan = P('orphan-prompt');
+    if (orphan) {
+      const showOrphan = !!(s.position && !s.running && !s.recovery);
+      orphan.style.display = showOrphan ? 'block' : 'none';
+      if (showOrphan) {
+        const long = s.position.sizeBase > 0;
+        P('orphan-info').innerHTML = `未托管持仓：<b class="${long ? 'up' : 'down'}">${long ? '多' : '空'} ${Math.abs(s.position.sizeBase)}</b> @ 均价 ${s.position.entryPrice} · 未实现盈亏 ${pnlHtml(s.position.unrealizedPnl)}。程序当前未在管理这笔仓位，请选择处理方式。`;
+      }
+    }
+    P('st-total').innerHTML = `${pnlHtml(s.totalPnl)} <span class="muted">/ ${s.returnPct != null ? `<span class="${cls(s.returnPct)}">${s.returnPct>=0?'+':''}${s.returnPct}%</span>` : '—'}</span>`;
+    const officialOpenCount = Array.isArray(s.officialOrders) ? s.officialOrders.length : null;
+    const localOpenCount = Array.isArray(s.active) ? s.active.length : null;
+    P('st-orders').textContent = `${officialOpenCount ?? localOpenCount ?? 0} 单 / ${s.stats?.completedRungs ?? 0} 格`;
+
+    P('fills').innerHTML = (s.fills||[]).map(f => {
+      const ft = f.time ?? f.t ?? f.updatedAt ?? f.createdAt;
+      const fprice = Number(f.price || f.execPrice || f.orderPrice || f.avgPrice || 0);
+      const fsize = f.size ?? f.execQty ?? f.quantity ?? f.orderQty ?? '—';
+      return `<tr><td>${ft ? new Date(Number(ft) || ft).toLocaleTimeString() : '—'}</td><td><span class="pill ${f.side==='buy'?'pill-buy':'pill-sell'}">${f.side==='buy'?'买':'卖'}</span></td><td>${round(fprice)}</td><td>${fsize}</td></tr>`;
+    }).join('');
+    P('alerts').innerHTML = (s.alerts||[]).map(a => `<div class="log-item">${new Date(a.t).toLocaleTimeString()} · ${a.message}</div>`).join('') || '<div class="log-item muted">暂无日志</div>';
+    P('range-warn').innerHTML = s.outOfRange ? `<div class="warn-box">⚠️ 价格已脱离网格区间，已暂停区间外补单。</div>` : '';
+
+    if (s.grid && s.config) drawGridOverlay(s);
+  }
+
+  function drawChart(candles) {
+    // K线接口受限或返回空数组时，仍绘制当前价和真实网格线，避免出现“空白图”。
+    const hasCandles = Array.isArray(candles) && candles.length > 0;
+    const fallbackPrice = Number(lastState?.lastPrice ?? curTrend?.price);
+    const plot = hasCandles ? candles : (Number.isFinite(fallbackPrice)
+      ? [{ time: Date.now(), close: fallbackPrice }]
+      : []);
+    const labels = plot.map(c => new Date(c.time).toLocaleString('zh-CN', {month:'numeric',day:'numeric',hour:'2-digit'}));
+    const data = plot.map(c => c.close);
+    const gridPlugin = {
+      id: 'gridLines',
+      afterDraw(c) {
+        const s = lastState; if (!s?.grid?.levels || !s.config) return;
+        const levels = s.grid.levels.map(Number).filter(Number.isFinite);
+        if (!levels.length) return;
+        const { ctx, chartArea: {left,right}, scales: {y} } = c;
+        ctx.save();
+        levels.forEach((lvl, i) => {
+          if (lvl < y.min || lvl > y.max) return;
+          const py = y.getPixelForValue(lvl);
+          const side = s.openByLevel?.[i];
+          ctx.strokeStyle = side === 'buy' ? '#22c55e88' : side === 'sell' ? '#ef444488' : '#253350';
+          ctx.lineWidth = side ? 1.2 : 0.6;
+          ctx.setLineDash(side ? [] : [3,3]);
+          ctx.beginPath(); ctx.moveTo(left, py); ctx.lineTo(right, py); ctx.stroke();
+        });
+        if (s.lastPrice >= y.min && s.lastPrice <= y.max) {
+          const py = y.getPixelForValue(s.lastPrice);
+          ctx.setLineDash([]); ctx.strokeStyle = '#dde6f0'; ctx.lineWidth = 1.4;
+          ctx.beginPath(); ctx.moveTo(left, py); ctx.lineTo(right, py); ctx.stroke();
+          ctx.fillStyle = '#dde6f0'; ctx.font = '11px sans-serif';
+          ctx.fillText(' ' + round(s.lastPrice), left+2, py-3);
+        }
+        ctx.restore();
+      },
+    };
+    const config = {
+      type: 'line',
+      data: { labels, datasets: [{ data, borderColor: prefix === 'de' ? '#f59e0b' : prefix === 'ex' ? '#3b82f6' : '#22c55e', borderWidth: 1.5, pointRadius: 0, tension: .15 }] },
+      options: { responsive:true, maintainAspectRatio:false, animation:false,
+        plugins:{legend:{display:false}},
+        scales: { x:{ticks:{color:'#6b82a0',maxTicksLimit:8},grid:{color:'#1e2d45'}},
+                  y:{min: (!hasCandles && lastState?.config?.lower != null) ? Number(lastState.config.lower) : undefined,
+                     max: (!hasCandles && lastState?.config?.upper != null) ? Number(lastState.config.upper) : undefined,
+                     ticks:{color:'#6b82a0'},grid:{color:'#1e2d45'}} } },
+      plugins: [gridPlugin],
+    };
+    if (chart) chart.destroy();
+    chart = new Chart($(chartId), config);
+  }
+
+  function drawGridOverlay(s) { if (chart) chart.update('none'); }
+
+  loadMarkets();
+  return { getLastState: () => lastState, render };
+}
+
+// ── 初始化三个交易所控制器 ──────────────────────────────────────────────────
+const deCtrl = makeExchangeCtrl('de', 'de-chart');
+const exCtrl = makeExchangeCtrl('ex', 'ex-chart');
+const rsCtrl = makeExchangeCtrl('rs', 'rs-chart');
+
+// PopDEX account-wide daily turnover, sourced from official trade history.
+// It follows PopDEX's official UTC calendar-date convention.
+async function refreshPopDEXDailyVolume() {
+  try {
+    const r = await fetch('/api/de/daily-volume', { cache: 'no-store' });
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
+    const today = `${fmt(d.today)} USDC`;
+    const yesterday = `${fmt(d.yesterday)} USDC`;
+    $('ov-de-vol-today').textContent = today;
+    $('ov-de-vol-yesterday').textContent = yesterday;
+    $('de-st-vol-today').textContent = today;
+    $('de-st-vol-yesterday').textContent = yesterday;
+    $('de-st-vol-reset').textContent = `${d.todayDate} · 每日 UTC 00:00（北京时间 08:00）切换`;
+  } catch (e) {
+    // 官方按日成交历史受 Geomi 月度额度限制时，不让整个面板变成“不可用”：
+    // 回退展示机器人本地累计统计，并明确标注它不是官方 UTC 日统计。
+    let fallback = null;
+    try {
+      const sr = await fetch('/api/state', { cache: 'no-store' });
+      const ss = await sr.json();
+      const v = Number(ss?.stats?.volume);
+      if (Number.isFinite(v)) fallback = `本地累计 ${fmt(v)}（非日统计）`;
+    } catch {}
+    $('ov-de-vol-today').textContent = fallback || '暂不可用';
+    $('de-st-vol-today').textContent = fallback || '暂不可用';
+    $('ov-de-vol-yesterday').textContent = '官方日统计不可用';
+    $('de-st-vol-yesterday').textContent = '官方日统计不可用';
+    const note = $('de-st-vol-reset');
+    if (note) note.textContent = `官方接口暂不可用：${e.message}`;
+  }
+}
+refreshPopDEXDailyVolume();
+setInterval(refreshPopDEXDailyVolume, 30000);
+
+// ── 总览 SSE + 程序运行状态（后端连接心跳）─────────────────────────────────────
+// 服务器每秒推送一次总览数据。只要心跳正常即视为"正常运行"；心跳停止
+// （服务器崩溃、网络断开、电脑休眠）则显示"连接不稳/已掉线"。
+let lastBeat = 0;
+let lastOverview = {};
+const ovEs = null;
+async function refreshPopdexOverview(){try{const s=await (await fetch('/api/state',{cache:'no-store'})).json();lastBeat=Date.now();lastOverview={de:{health:{status:s.error?'error':s.running?'ok':'idle',reason:s.error?('错误：'+s.error):s.running?'运行中':'未运行'}}};const view={...s,balance:s.account?.availableBalance ?? s.balance,equity:s.account?.equity ?? s.equity,volume:s.account?.volume ?? s.stats?.volume};deCtrl.render(view);const d={...view,mode:s.settings?.mode||'paper',lastPrice:s.lastPrice,config:s.config,health:lastOverview.de.health};renderOverview({de:d});const logEl=$('de-alerts');if(logEl){const rows=[];if(s.error)rows.push(`<div class="log-item" style="color:#fca5a5"><b>❌ 错误：</b>${String(s.error).replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]))}</div>`);(s.log||[]).slice(0,30).forEach(x=>rows.push(`<div class="log-item"><span class="muted">${new Date(x.time).toLocaleTimeString()}</span> ${String(x.message||'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]))}</div>`));logEl.innerHTML=rows.join('')||'<div class="log-item muted">暂无日志</div>'}}catch(e){console.error('PopDEX overview refresh failed:',e);updateConnStatus()}}
+refreshPopdexOverview();setInterval(refreshPopdexOverview,1500);
+
+function updateConnStatus() {
+  const el = $('hdr-conn'), txt = $('hdr-conn-txt');
+  if (!el || !txt) return;
+  const age = Date.now() - lastBeat;
+  let cls, label;
+  if (lastBeat === 0) {
+    cls = 'warn'; label = '连接中…';
+  } else if (age < 3000) {
+    cls = 'online'; label = '正常运行';
+  } else if (age < 10000) {
+    cls = 'warn'; label = '连接不稳…';
+  } else {
+    cls = 'offline'; label = '已掉线';
+  }
+  el.className = 'conn ' + cls;
+  txt.textContent = label;
+  el.title = '后端连接状态' + (lastBeat ? `（最后更新 ${Math.round(age / 1000)} 秒前）` : '');
+  if (lastBeat && age >= 10000) ['de','ex','rs'].forEach((p) => setExHealth(p, lastOverview[p]?.health, false));
+}
+setInterval(updateConnStatus, 1000);
+updateConnStatus();
+
+// ── 全局代理状态 ──────────────────────────────────────────────────────────────
+// 先看是否配置了代理（GLOBAL_PROXY 或任一交易所代理）；若有则通过 /api/proxy-check
+// 验证出口 IP，显示 代理正常/代理异常；若未配置则显示 直连模式。
+async function refreshProxyStatus() {
+  const el = $('hdr-proxy'), txt = $('hdr-proxy-txt');
+  if (!el || !txt) return;
+  let cfg = {};
+  try { cfg = await (await fetch('/api/proxy-config')).json(); } catch {}
+  const configured = !!(cfg.global || cfg.de || cfg.ex || cfg.rs);
+  if (!configured) {
+    el.className = 'conn'; txt.textContent = '直连模式'; el.title = '未配置代理（直连出网）';
+    return;
+  }
+  el.className = 'conn warn'; txt.textContent = '代理检测中…';
+  try {
+    const r = await (await fetch('/api/proxy-check')).json();
+    if (r.ok) {
+      el.className = 'conn online'; txt.textContent = '代理正常';
+      el.title = `全局代理正常 · 出口 IP：${r.ip}` + (cfg.global ? '' : '（使用交易所独立代理）');
+    } else {
+      el.className = 'conn offline'; txt.textContent = '代理异常';
+      el.title = '代理无法联网：' + (r.error || '未知错误');
+    }
+  } catch (e) {
+    el.className = 'conn offline'; txt.textContent = '代理异常';
+    el.title = '代理检测请求失败：' + (e.message || e);
+  }
+}
+refreshProxyStatus();
+setInterval(refreshProxyStatus, 30000); // 代理检测走外网，30 秒一次即可
+
+// ── 趋势预警 ──────────────────────────────────────────────────────────────────
+// 定时扫描各交易所"运行中"网格所在币种的趋势，与网格类型(中性/做多/做空)比对：
+// 趋势变化（可能突破/反转）时在对应卡片上高亮提示。使用与"市场与趋势"相同的分析。
+const MODE_LABEL = { neutral: '中性', long: '做多', short: '做空' };
+const TREND_LABEL = { up: '上升', down: '下降', range: '震荡' };
+
+async function scanTrends() {
+  for (const p of ['de', 'ex', 'rs']) {
+    const box = $(`ov-${p}-trend`);
+    if (!box) continue;
+    const d = lastOverview[p];
+    if (!d || !d.running || !d.config || d.config.marketId == null) {
+      box.className = 'trend-box trend-idle';
+      box.textContent = '趋势监测：未运行';
+      continue;
+    }
+    try {
+      const r = await fetch(`/api/${p}/trend?marketId=${d.config.marketId}&intervalSec=3600`);
+      const j = await r.json();
+      if (!j.analysis) throw new Error('no analysis');
+      renderTrendWarn(box, d.config.mode, j.analysis, d.config.displayName);
+    } catch {
+      box.className = 'trend-box trend-idle';
+      box.textContent = '趋势监测：数据暂不可用';
+    }
+  }
+}
+
+function renderTrendWarn(box, mode, a, name) {
+  const rec = a.recommended;                       // long | short | neutral
+  const tl = TREND_LABEL[a.trend] || a.trend;
+  const pct = Math.round((a.strength || 0) * 100);
+  const sym = String(name || '').split(/[-/]/)[0] || '该币';
+  if (rec === mode) {
+    box.className = 'trend-box trend-ok';
+    box.textContent = `✓ 趋势一致：${tl}（${MODE_LABEL[mode] || mode}网格 · 强度${pct}%）`;
+    return;
+  }
+  const reversed = (mode === 'long' && rec === 'short') || (mode === 'short' && rec === 'long');
+  if (reversed) {
+    box.className = 'trend-box trend-alert';
+    box.innerHTML = `🔴 ${sym} 趋势反转为<b>${tl}</b>（强度${pct}%），当前为${MODE_LABEL[mode]}网格，风险较高，建议尽快复核`;
+  } else if (mode === 'neutral') {
+    box.className = 'trend-box trend-watch';
+    box.innerHTML = `⚠️ ${sym} 出现<b>${tl}</b>趋势（强度${pct}%），中性网格或将单边突破区间`;
+  } else {
+    box.className = 'trend-box trend-watch';
+    box.innerHTML = `⚠️ ${sym} 趋势转为<b>${tl}</b>（强度${pct}%），与${MODE_LABEL[mode]}网格不一致`;
+  }
+}
+scanTrends();
+setInterval(scanTrends, 60000); // 每分钟扫描一次趋势
+
+// 重新与交易所建立连接（不撤单、不平仓、不改网格状态；成功后自动对账一次）
+async function reconnectEx(p, btn) {
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 重连中…'; }
+  try {
+    const r = await fetch(`/api/${p}/reconnect`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const j = await r.json();
+    if (j.error) {
+      alert(`${p.toUpperCase()} 重连失败：${j.error}\n\n请检查网络/代理后再试。`);
+    } else {
+      if (j.resumeError) alert(`${p.toUpperCase()} 已重连，但自动续跑失败：${j.resumeError}\n挂单保留未动，可稍后重启程序再试。`);
+      if (btn) {
+        btn.textContent = j.resumed ? '✅ 已重连并续跑网格' : '✅ 已重连';
+        setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
+        return;
+      }
+    }
+  } catch (e) {
+    alert(`${p.toUpperCase()} 重连失败：${e.message}`);
+  }
+  if (btn) { btn.textContent = orig; btn.disabled = false; }
+}
+
+function setExHealth(p, h, connected) {
+  const status = !connected ? 'error' : (h?.status || 'idle');
+  const reason = !connected ? '后端连接中断，状态未知' : (h?.reason || '未运行');
+  const dot = $(`hdr-${p}-dot`);
+  if (dot) { dot.className = 'hdot ' + status; dot.title = `${p.toUpperCase()}：${reason}`; }
+  const line = $(`ov-${p}-health`);
+  if (line) {
+    const icon = status === 'ok' ? '🟢' : status === 'warn' ? '🟡' : status === 'error' ? '🔴' : '⚪';
+    line.className = 'exhealth eh-' + status;
+    line.textContent = `${icon} ${reason}`;
+  }
+}
+
+function renderOverview(data) {
+  lastOverview = data;
+  // PopDEX-only totals
+  let totEquity = 0, totBalance = 0, totPnl = 0, totRealized = 0, totUnrealized = 0, totVolume = 0, totRungs = 0;
+  let running = 0;
+
+  ['de'].forEach(p => {
+    const d = data[p];
+    if (!d) return;
+    if (d.balance != null) totBalance += d.balance;
+    if (d.equity != null) totEquity += d.equity;
+    if (d.totalPnl != null) totPnl += d.totalPnl;
+    if (d.realizedPnl != null) totRealized += d.realizedPnl;
+    if (d.unrealizedPnl != null) totUnrealized += d.unrealizedPnl;
+    if (d.volume != null) totVolume += d.volume;
+    totRungs += d.completedRungs || 0;
+    if (d.running) running++;
+
+    // Per-exchange overview
+    const dot = $(`ov-${p}-dot`);
+    dot.className = 'run-dot' + (d.running ? ' on' : '');
+    const badge = $(`ov-${p}-badge`);
+    badge.textContent = d.mode?.toUpperCase() || 'PAPER';
+    badge.className = 'badge ' + (d.mode === 'live' ? 'badge-live' : 'badge-paper');
+    setExHealth(p, d.health, true);
+
+    $(`ov-${p}-pnl`).innerHTML = `<span class="${cls(d.totalPnl)}">${signed(d.totalPnl)}</span>`;
+    $(`ov-${p}-ret`).innerHTML = d.returnPct != null ? `<span class="${cls(d.returnPct)}">收益率 ${d.returnPct >= 0 ? '+' : ''}${d.returnPct}%</span>` : '收益率 —';
+    $(`ov-${p}-bal`).textContent = d.balance == null ? '—' : Number(d.balance).toFixed(2);
+    $(`ov-${p}-eq`).textContent = d.equity == null ? '—' : Number(d.equity).toFixed(2);
+    $(`ov-${p}-rpnl`).innerHTML = `<span class="${cls(d.realizedPnl)}">${signed(d.realizedPnl)}</span>`;
+    $(`ov-${p}-upnl`).innerHTML = `<span class="${cls(d.unrealizedPnl)}">${signed(d.unrealizedPnl)}</span>`;
+    $(`ov-${p}-vol`).textContent = fmt(d.volume);
+    $(`ov-${p}-rungs`).textContent = `${d.completedRungs || 0} 格`;
+    $(`ov-${p}-price`).textContent = d.lastPrice ?? '—';
+    $(`ov-${p}-mkt`).textContent = d.config?.displayName ?? '—';
+
+    // 本次启动参数：启动网格后显示（下/上边界、格数、每格数量、杠杆、区间外策略），
+    // 停止后自动清空；重新启动即显示新一轮参数。调整区间后同步更新。
+    const gc = $(`ov-${p}-gridcfg`);
+    if (gc) {
+      const c = d.config;
+      if (d.running && c && c.mode === 'recovery') {
+        gc.style.display = '';
+        gc.innerHTML = `<div class="gc-title">本次启动参数</div>`
+          + `回收阶梯模式（只减仓）· 阶梯间距 <b>${c.spacing ?? '—'}</b> · 每档 <b>${c.sizeBase ?? '—'}</b>`;
+      } else if (d.running && c && c.lower != null) {
+        const sl = c.outOfRangeAction === 'recover' ? '只减仓回收阶梯' : '冲破区间平仓';
+        const modeTxt = c.mode === 'long' ? '做多' : c.mode === 'short' ? '做空' : '中性';
+        gc.style.display = '';
+        gc.innerHTML = `<div class="gc-title">本次启动参数（${modeTxt}网格）</div>`
+          + `下边界 <b>${c.lower}</b> · 上边界 <b>${c.upper}</b><br>`
+          + `网格 <b>${c.gridCount}</b> 格 · 每格 <b>${c.sizeBase}</b><br>`
+          + `杠杆 <b>${c.leverage}x</b> · 区间外策略 <b>${sl}</b>`;
+      } else {
+        gc.style.display = 'none';
+        gc.innerHTML = '';
+      }
+    }
+  });
+
+  // Totals
+  $('tot-equity').innerHTML = `<span class="${totEquity > 0 ? '' : 'muted'}">${fmt(totEquity)}</span>`;
+  $('tot-balance').textContent = fmt(totBalance);
+  $('tot-pnl').innerHTML = `<span class="${cls(totPnl)}">${signed(totPnl)}</span>`;
+  $('tot-realized').innerHTML = `<span class="${cls(totRealized)}">${signed(totRealized)}</span>`;
+  $('tot-unrealized').innerHTML = `<span class="${cls(totUnrealized)}">${signed(totUnrealized)}</span>`;
+  $('tot-volume').textContent = fmt(totVolume);
+  $('tot-rungs').textContent = totRungs;
+  $('tot-running').innerHTML = running === 0
+    ? '<span class="muted">已停止</span>'
+    : `<span class="up">${running}/1 运行中</span>`;
+  $('tot-modes').textContent = `PopDEX：${data.de?.mode?.toUpperCase() || 'LIVE'}`;
+}
+
+// ── IP 配置功能 ──────────────────────────────────────────────────────────────
+function modeLabel(m) { return m==='long'?'做多网格':m==='short'?'做空网格':'中性网格'; }
+
+async function applyProxy(target) {
+  const inputId = target === 'global' ? 'ip-global' : `ip-${target}`;
+  const statusId = target === 'global' ? 'ip-global-status' : `ip-${target}-status`;
+  const value = $(inputId).value.trim();
+
+  const fieldMap = {
+    global: 'GLOBAL_PROXY',
+    de: 'DECIBEL_PROXY',
+    ex: 'EXTENDED_PROXY',
+    rs: 'RISEX_PROXY',
+  };
+
+  try {
+    const r = await fetch('/api/env', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: fieldMap[target], value }),
+    });
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    $(statusId).innerHTML = `<span class="up">✓ 已写入 .env（${fieldMap[target]}=${value || '（已清空）'}）。重启服务器后生效。</span>`;
+    refreshProxyStatus();
+  } catch (e) {
+    $(statusId).innerHTML = `<span class="down">✗ 写入失败：${e.message}</span>`;
+  }
+}
+
+async function testProxy() {
+  const el = $('ip-test-result');
+  el.innerHTML = '<span class="muted">检测中...</span>';
+  try {
+    const r = await fetch('/api/proxy-check');
+    const j = await r.json();
+    if (j.ok) {
+      el.innerHTML = `<span class="up">✓ 代理正常，当前出口 IP：<strong>${j.ip}</strong></span>`;
+    } else {
+      el.innerHTML = `<span class="down">✗ 代理无法联网：${j.error}。请检查代理地址是否正确。</span>`;
+    }
+  } catch (e) {
+    el.innerHTML = `<span class="down">✗ 检测请求失败：${e.message}</span>`;
+  }
+}
+
+// ── 加载代理配置 ─────────────────────────────────────────────────────────────
+async function loadProxyConfig() {
+  try {
+    const r = await fetch('/api/proxy-config');
+    const j = await r.json();
+    if (j.global) $('ip-global').value = j.global;
+    if (j.de) $('ip-de').value = j.de;
+    if (j.ex) $('ip-ex').value = j.ex;
+    if (j.rs) $('ip-rs').value = j.rs;
+  } catch {}
+}
+loadProxyConfig();
+
+// ══ AI 助手 ═══════════════════════════════════════════════════════════════
+const AI_ENV_MAP = {
+  'ai-baseurl':'AI_BASE_URL', 'ai-key':'AI_API_KEY',
+  'ai-model':'AI_MODEL', 'ai-model-small':'AI_MODEL_SMALL',
+  'ai-sentinel-min':'AI_SENTINEL_MINUTES', 'ai-report-hour':'AI_REPORT_HOUR',
+  'ai-tg-token':'TELEGRAM_BOT_TOKEN', 'ai-tg-chat':'TELEGRAM_CHAT_ID', 'ai-webhook':'NOTIFY_WEBHOOK',
+};
+// 服务商预设：proto=后端协议（openai 兼容 / anthropic / gemini），base=接口地址，
+// models=常用模型（datalist 下拉，可手动输入任意新模型），main/small=选中后自动填的默认值
+const AI_VENDORS = {
+  deepseek:   { name:'DeepSeek 深度求索', proto:'openai', base:'https://api.deepseek.com/v1', models:['deepseek-chat','deepseek-reasoner'], main:'deepseek-chat', small:'deepseek-chat' },
+  kimi:       { name:'Kimi（月之暗面）', proto:'openai', base:'https://api.moonshot.cn/v1', models:['kimi-latest','moonshot-v1-8k','moonshot-v1-32k','moonshot-v1-128k'], main:'kimi-latest', small:'moonshot-v1-8k' },
+  qwen:       { name:'通义千问（阿里）', proto:'openai', base:'https://dashscope.aliyuncs.com/compatible-mode/v1', models:['qwen-plus','qwen-turbo','qwen-max','qwen-long'], main:'qwen-plus', small:'qwen-turbo' },
+  glm:        { name:'智谱 GLM', proto:'openai', base:'https://open.bigmodel.cn/api/paas/v4', models:['glm-4-plus','glm-4-air','glm-4-flash'], main:'glm-4-plus', small:'glm-4-flash' },
+  siliconflow:{ name:'硅基流动 SiliconFlow', proto:'openai', base:'https://api.siliconflow.cn/v1', models:['deepseek-ai/DeepSeek-V3','deepseek-ai/DeepSeek-R1','Qwen/Qwen2.5-72B-Instruct'], main:'deepseek-ai/DeepSeek-V3', small:'Qwen/Qwen2.5-72B-Instruct' },
+  openai:     { name:'OpenAI', proto:'openai', base:'https://api.openai.com/v1', models:['gpt-4o','gpt-4o-mini','gpt-4.1','gpt-4.1-mini','o3-mini'], main:'gpt-4o', small:'gpt-4o-mini' },
+  anthropic:  { name:'Anthropic Claude', proto:'anthropic', base:'https://api.anthropic.com', models:['claude-sonnet-4-5','claude-haiku-4-5','claude-opus-4-1','claude-3-5-haiku-latest'], main:'claude-sonnet-4-5', small:'claude-haiku-4-5' },
+  gemini:     { name:'Google Gemini', proto:'gemini', base:'https://generativelanguage.googleapis.com', models:['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash'], main:'gemini-2.5-flash', small:'gemini-2.0-flash' },
+  grok:       { name:'xAI Grok', proto:'openai', base:'https://api.x.ai/v1', models:['grok-3','grok-3-mini'], main:'grok-3', small:'grok-3-mini' },
+  openrouter: { name:'OpenRouter（聚合）', proto:'openai', base:'https://openrouter.ai/api/v1', models:['anthropic/claude-sonnet-4','openai/gpt-4o-mini','deepseek/deepseek-chat','google/gemini-2.0-flash-001'], main:'anthropic/claude-sonnet-4', small:'openai/gpt-4o-mini' },
+  ollama:     { name:'Ollama（本地免费）', proto:'openai', base:'http://127.0.0.1:11434/v1', models:['qwen2.5','llama3.1','deepseek-r1'], main:'qwen2.5', small:'qwen2.5' },
+  custom:     { name:'自定义（OpenAI 兼容协议）', proto:'openai', base:'', models:[], main:'', small:'' },
+};
+// 填充服务商下拉
+(() => {
+  const sel = $('ai-vendor');
+  for (const [k, v] of Object.entries(AI_VENDORS)) {
+    const o = document.createElement('option'); o.value = k; o.textContent = v.name; sel.appendChild(o);
+  }
+})();
+function aiVendorChange() {
+  const v = AI_VENDORS[$('ai-vendor').value];
+  if (!v) return;
+  $('ai-baseurl').value = v.base;
+  $('ai-model').value = v.main;
+  $('ai-model-small').value = v.small;
+  const dl = $('ai-model-list');
+  dl.innerHTML = '';
+  for (const m of v.models) { const o = document.createElement('option'); o.value = m; dl.appendChild(o); }
+  $('ai-cfg-status').textContent = `已按 ${v.name} 预填接口地址和推荐模型（模型可下拉换或手动输入），填好 API Key 后点「保存配置」。`;
+}
+const AI_EXNAME = { de:'PopDEX', ex:'Extended', rs:'RISEx' };
+const AI_ACTION_LABEL = {
+  adjust_range:'调整网格区间', stop_grid:'停止网格', cancel_orders:'撤销全部挂单（保留持仓）',
+  close_position:'市价平仓', reconnect:'重连交易所', start_recovery:'启动只减仓回收阶梯', start_grid:'启动网格',
+};
+let aiChatHistory = [];
+
+async function aiSaveConfig(btn) {
+  if (btn) btn.disabled = true;
+  let saved = 0;
+  try {
+    // 服务商选择 -> 翻译成后端协议 AI_PROVIDER
+    const items = [];
+    const vend = AI_VENDORS[$('ai-vendor').value];
+    if (vend) items.push(['AI_PROVIDER', vend.proto]);
+    for (const [id, key] of Object.entries(AI_ENV_MAP)) {
+      const v = $(id).value.trim();
+      if (v) items.push([key, v]); // 留空不覆盖已有配置
+    }
+    for (const [key, value] of items) {
+      const r = await fetch('/api/env', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ key, value }) });
+      const j = await r.json();
+      if (j.error) { $('ai-cfg-status').textContent = `❌ ${key}：${j.error}`; if (btn) btn.disabled = false; return; }
+      saved++;
+    }
+    $('ai-cfg-status').textContent = saved ? `✅ 已保存 ${saved} 项并立即生效（已写入 .env）` : '未填写任何内容，无变更。';
+    aiRefreshStatus();
+  } catch (e) { $('ai-cfg-status').textContent = '❌ 保存失败：' + e.message; }
+  if (btn) btn.disabled = false;
+}
+
+async function aiTest(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '测试中…'; }
+  try {
+    const r = await fetch('/api/ai/test', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const j = await r.json();
+    $('ai-cfg-status').textContent = j.ok
+      ? `✅ 连接正常：${j.provider} · ${j.model} · ${j.ms}ms · 回复「${j.reply}」`
+      : `❌ 连接失败：${j.error}`;
+  } catch (e) { $('ai-cfg-status').textContent = '❌ 测试失败：' + e.message; }
+  if (btn) { btn.disabled = false; btn.textContent = '测试连接'; }
+}
+
+async function tgTest(btn) {
+  if (btn) { btn.disabled=true; btn.textContent='发送中…'; }
+  try { const r=await fetch('/api/telegram/test',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}); const j=await r.json(); $('ai-cfg-status').textContent=j.ok?'✅ Telegram 测试消息已发送，请检查目标聊天':`❌ Telegram：${j.reason||j.error||'发送失败'}`; }
+  catch(e) { $('ai-cfg-status').textContent='❌ Telegram 测试失败：'+e.message; }
+  if (btn) { btn.disabled=false; btn.textContent='测试 Telegram'; }
+}
+
+function aiFmtTime(t) { return t ? new Date(t).toLocaleString('zh-CN', { hour12:false }) : ''; }
+
+async function aiRefreshStatus() {
+  try {
+    const r = await fetch('/api/ai/status');
+    const s = await r.json();
+    // ── 已保存配置回填（仅页面加载后执行一次，避免覆盖正在编辑的内容）──
+    // 配置本身保存在 .env，重启不丢；这里把它回显到表单，密钥只显示掩码。
+    if (!window._aiCfgFilled) {
+      window._aiCfgFilled = true;
+      // 服务商回显：接口地址与预设匹配则选中对应服务商；否则按协议归类
+      let vend = Object.keys(AI_VENDORS).find((k) => AI_VENDORS[k].base && AI_VENDORS[k].base === s.baseUrl);
+      if (!vend && s.configured) vend = s.provider === 'anthropic' ? 'anthropic' : s.provider === 'gemini' ? 'gemini' : 'custom';
+      if (vend) {
+        $('ai-vendor').value = vend;
+        const dl = $('ai-model-list');
+        dl.innerHTML = '';
+        for (const m of (AI_VENDORS[vend].models || [])) { const o = document.createElement('option'); o.value = m; dl.appendChild(o); }
+      }
+      if (s.configured || s.baseUrl) $('ai-baseurl').value = s.baseUrl || '';
+      if (s.configured) {
+        $('ai-model').value = s.model || '';
+        $('ai-model-small').value = s.modelSmall || '';
+      }
+      $('ai-sentinel-min').value = s.sentinelMin ?? '';
+      $('ai-report-hour').value = s.reportHour ?? '';
+      if (s.telegramChat) $('ai-tg-chat').value = s.telegramChat;
+      if (s.webhook) $('ai-webhook').value = s.webhook;
+      if (s.apiKeyMasked) $('ai-key').placeholder = `已保存（${s.apiKeyMasked}），留空表示不修改`;
+      if (s.telegramTokenMasked) $('ai-tg-token').placeholder = `已保存（${s.telegramTokenMasked}），留空表示不修改`;
+    }
+    $('ai-baseurl').placeholder = s.baseUrl || '';
+    $('ai-model').placeholder = s.model || '';
+    $('ai-model-small').placeholder = s.modelSmall || '';
+    $('ai-sentinel-min').placeholder = s.sentinelMin;
+    $('ai-report-hour').placeholder = s.reportHour;
+    const chans = (s.notifyChannels || []).join(' + ') || '未配置';
+    $('ai-cfg-status').textContent = s.configured
+      ? `当前：${s.provider} · ${s.model}（哨兵每 ${s.sentinelMin} 分钟 · 日报 ${s.reportHour} 点 · 推送渠道：${chans}）`
+      : '尚未配置 AI_API_KEY —— 填好上方信息后点「保存配置」。';
+    // 哨兵
+    const badge = $('ai-sent-badge');
+    if (s.sentinel) {
+      const lv = s.sentinel.level;
+      badge.innerHTML = `<span class="ai-badge ${lv}">${lv === 'ok' ? '正常' : lv === 'warn' ? '注意' : '严重'}</span>`;
+      $('ai-sentinel-box').className = 'ai-box';
+      let sentTxt = `[巡检时间 ${aiFmtTime(s.sentinel.t)}] ${s.sentinel.summary}`;
+      if (s.sentinel.per) {
+        for (const [k, v] of Object.entries(s.sentinel.per)) {
+          if (!v) continue;
+          const icon = v.level === 'ok' ? '🟢' : v.level === 'warn' ? '🟡' : '🔴';
+          sentTxt += `\n${icon} ${AI_EXNAME[k] || k}：${v.summary || ''}${v.advice ? `（建议：${v.advice}）` : ''}`;
+        }
+      } else {
+        if (s.sentinel.detail) sentTxt += `\n问题：${s.sentinel.detail}`;
+        if (s.sentinel.advice) sentTxt += `\n建议：${s.sentinel.advice}`;
+      }
+      $('ai-sentinel-box').textContent = sentTxt;
+    } else if (s.sentinelError) {
+      badge.innerHTML = '';
+      $('ai-sentinel-box').textContent = '巡检出错：' + s.sentinelError;
+    }
+    // ── 总览页：BTC 市况报告 + 各所哨兵报告 ──
+    if ($('ov-ai-market')) {
+      if (s.market) {
+        $('ov-ai-mkt-time').textContent = `分析时间 ${aiFmtTime(s.market.t)} · 数据源 ${s.market.source || ''} · 每 ${s.marketMin} 分钟自动更新`;
+        $('ov-ai-market').className = 'ai-box';
+        $('ov-ai-market').textContent = aiRegimeText(s.market);
+      } else if (s.marketError) {
+        $('ov-ai-market').textContent = '上次分析失败：' + s.marketError;
+      }
+      if (document.activeElement !== $('ov-ai-mkt-min')) $('ov-ai-mkt-min').placeholder = s.marketMin;
+      if (document.activeElement !== $('ov-ai-sent-min')) $('ov-ai-sent-min').placeholder = s.sentinelMin;
+      for (const p of ['de', 'ex', 'rs']) {
+        const el = $(`ov-${p}-ai`);
+        const per = s.sentinel && s.sentinel.per ? s.sentinel.per[p] : null;
+        if (el && per) {
+          el.style.display = '';
+          el.classList.remove('muted');
+          const icon = per.level === 'ok' ? '🟢' : per.level === 'warn' ? '🟡' : '🔴';
+          el.textContent = `${icon} AI 哨兵 · 巡检时间 ${aiFmtTime(s.sentinel.t)}\n${per.summary || ''}${per.advice ? `\n建议：${per.advice}` : ''}`;
+        }
+      }
+    }
+    // 出区间建议
+    const oorKeys = Object.keys(s.oorAdvice || {});
+    if (oorKeys.length) {
+      $('ai-oor-box').className = 'ai-box';
+      $('ai-oor-box').textContent = oorKeys.map((k) => {
+        const a = s.oorAdvice[k];
+        return `[${aiFmtTime(a.t)}] ${AI_EXNAME[k]}：${a.suggestionText || a.suggestion}\n理由：${a.reasoning || ''}`;
+      }).join('\n\n');
+    }
+    // 日报
+    if (s.report) {
+      $('ai-report-box').className = 'ai-box';
+      $('ai-report-box').textContent = `[${aiFmtTime(s.report.t)}]\n${s.report.text}`;
+    }
+  } catch { /* 后端未就绪 */ }
+}
+
+async function aiSentinelRun(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '巡检中…'; }
+  try {
+    const r = await fetch('/api/ai/sentinel-run', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const j = await r.json();
+    if (j.error) alert('巡检失败：' + j.error); else aiRefreshStatus();
+  } catch (e) { alert('巡检失败：' + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = '立即巡检一次'; }
+}
+
+async function aiReport(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
+  try {
+    const r = await fetch('/api/ai/report', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const j = await r.json();
+    if (j.error) alert('生成失败：' + j.error); else aiRefreshStatus();
+  } catch (e) { alert('生成失败：' + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = '立即生成日报'; }
+}
+
+async function aiAnalyze(p, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '分析中…'; }
+  const box = $('ai-analyze-box');
+  try {
+    const r = await fetch('/api/ai/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ex: p }) });
+    const j = await r.json();
+    if (j.error) { box.textContent = '❌ ' + j.error; }
+    else {
+      box.className = 'ai-box';
+      box.textContent =
+        `【${AI_EXNAME[p]} · ${j.market} · 现价 ${j.price}】\n` +
+        `市况：${j.regime} · ${j.suitable ? '✅ 适合跑网格' : '⛔ 当前不适合跑网格'} · 置信度 ${Math.round((j.confidence || 0) * 100)}%\n` +
+        `建议模式：${j.recommendMode === 'long' ? '做多网格' : j.recommendMode === 'short' ? '做空网格' : '中性网格'}` +
+        (j.suggestedRange ? ` · 区间 ${j.suggestedRange.lower} ~ ${j.suggestedRange.upper}` : '') +
+        (j.suggestedGridCount ? ` · ${j.suggestedGridCount} 格` : '') +
+        (j.suggestedSpacingPct ? ` · 间距约 ${j.suggestedSpacingPct}%` : '') +
+        `\n分析：${j.reasoning || ''}` +
+        (j.caution ? `\n⚠️ ${j.caution}` : '');
+    }
+  } catch (e) { box.textContent = '❌ 分析失败：' + e.message; }
+  if (btn) { btn.disabled = false; btn.textContent = '分析 ' + AI_EXNAME[p]; }
+}
+
+function aiChatAppend(cls, text) {
+  const log = $('ai-chatlog');
+  const div = document.createElement('div');
+  div.className = 'ai-msg ' + cls;
+  div.textContent = text; // textContent 防注入
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  return div;
+}
+
+async function aiChatSend() {
+  const input = $('ai-chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  aiChatAppend('user', msg);
+  aiChatHistory.push({ role:'user', content: msg });
+  const waiting = aiChatAppend('sys', 'AI 思考中…');
+  try {
+    const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message: msg, history: aiChatHistory.slice(0, -1) }) });
+    const j = await r.json();
+    waiting.remove();
+    if (j.error) { aiChatAppend('sys', '❌ ' + j.error); return; }
+    aiChatAppend('bot', j.reply || '（空回复）');
+    aiChatHistory.push({ role:'assistant', content: j.reply || '' });
+    if (aiChatHistory.length > 16) aiChatHistory = aiChatHistory.slice(-16);
+    if (j.action && j.action.type && j.action.type !== 'none') aiRenderAction(j.action);
+  } catch (e) { waiting.remove(); aiChatAppend('sys', '❌ 请求失败：' + e.message); }
+}
+
+function aiRenderAction(action) {
+  const log = $('ai-chatlog');
+  const card = document.createElement('div');
+  card.className = 'ai-action';
+  const label = AI_ACTION_LABEL[action.type] || action.type;
+  const head = document.createElement('div');
+  head.textContent = `⚡ AI 提议操作：${label} —— ${AI_EXNAME[action.exchange] || action.exchange}`
+    + (action.params && Object.keys(action.params).length ? `\n参数：${JSON.stringify(action.params)}` : '');
+  head.style.whiteSpace = 'pre-wrap';
+  card.appendChild(head);
+  const row = document.createElement('div');
+  row.className = 'btnrow';
+  const ok = document.createElement('button');
+  ok.textContent = '确认执行';
+  ok.style.background = 'var(--pur)'; ok.style.color = '#fff';
+  ok.onclick = () => aiExecAction(action, card, ok);
+  const no = document.createElement('button');
+  no.textContent = '取消';
+  no.style.background = 'var(--panel2)'; no.style.color = 'var(--mut2)';
+  no.onclick = () => { card.remove(); aiChatAppend('sys', '已取消该操作。'); };
+  row.appendChild(ok); row.appendChild(no);
+  card.appendChild(row);
+  log.appendChild(card);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function aiExecAction(action, card, okBtn) {
+  const label = AI_ACTION_LABEL[action.type] || action.type;
+  const exn = AI_EXNAME[action.exchange] || action.exchange;
+  if (!confirm(`确认在 ${exn} 执行「${label}」？\n参数：${JSON.stringify(action.params || {})}`)) return;
+  okBtn.disabled = true; okBtn.textContent = '执行中…';
+  const p = action.exchange, prm = action.params || {};
+  // 白名单映射：AI 的提议最终仍走【现有 REST 接口】执行
+  const MAP = {
+    adjust_range:  ['adjust', { lower: prm.lower, upper: prm.upper }],
+    stop_grid:     ['stop', { closePosition: prm.closePosition !== false }],
+    cancel_orders: ['cancel-orders', {}],
+    close_position:['close-position', {}],
+    reconnect:     ['reconnect', {}],
+    start_recovery:['start-recovery', prm],
+    start_grid:    ['start', prm],
+  };
+  const m = MAP[action.type];
+  if (!m) { aiChatAppend('sys', '❌ 未知操作类型'); card.remove(); return; }
+  try {
+    const r = await fetch(`/api/${p}/${m[0]}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(m[1]) });
+    const j = await r.json();
+    aiChatAppend('sys', j.error ? `❌ 执行失败：${j.error}` : `✅ 已执行：${exn} ${label}`);
+  } catch (e) { aiChatAppend('sys', '❌ 执行失败：' + e.message); }
+  card.remove();
+}
+
+// 市况报告文本（总览页/复用）
+function aiRegimeText(j) {
+  return `【${j.market} · 现价 ${j.price}】\n` +
+    `市况：${j.regime} · ${j.suitable ? '✅ 适合跑网格' : '⛔ 当前不适合跑网格'} · 置信度 ${Math.round((j.confidence || 0) * 100)}%\n` +
+    `建议模式：${j.recommendMode === 'long' ? '做多网格' : j.recommendMode === 'short' ? '做空网格' : '中性网格'}` +
+    (j.suggestedRange ? ` · 区间 ${j.suggestedRange.lower} ~ ${j.suggestedRange.upper}` : '') +
+    (j.suggestedGridCount ? ` · ${j.suggestedGridCount} 格` : '') +
+    (j.suggestedSpacingPct ? ` · 间距约 ${j.suggestedSpacingPct}%` : '') +
+    `\n分析：${j.reasoning || ''}` + (j.caution ? `\n⚠️ ${j.caution}` : '');
+}
+
+async function aiMarketRun(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '分析中…'; }
+  try {
+    const r = await fetch('/api/ai/market-run', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const j = await r.json();
+    if (j.error) alert('市况分析失败：' + j.error); else aiRefreshStatus();
+  } catch (e) { alert('市况分析失败：' + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = '立即分析'; }
+}
+
+async function aiSaveIntervals(btn) {
+  if (btn) btn.disabled = true;
+  const st = $('ov-ai-int-status');
+  try {
+    const pairs = [];
+    if ($('ov-ai-mkt-min').value.trim() !== '') pairs.push(['AI_MARKET_MINUTES', $('ov-ai-mkt-min').value.trim()]);
+    if ($('ov-ai-sent-min').value.trim() !== '') pairs.push(['AI_SENTINEL_MINUTES', $('ov-ai-sent-min').value.trim()]);
+    if (!pairs.length) { st.textContent = '未填写，无变更'; if (btn) btn.disabled = false; return; }
+    for (const [key, value] of pairs) {
+      const r = await fetch('/api/env', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ key, value }) });
+      const j = await r.json();
+      if (j.error) { st.textContent = '❌ ' + j.error; if (btn) btn.disabled = false; return; }
+    }
+    st.textContent = '✅ 已保存，立即生效';
+    $('ov-ai-mkt-min').value = ''; $('ov-ai-sent-min').value = '';
+    aiRefreshStatus();
+  } catch (e) { st.textContent = '❌ ' + e.message; }
+  if (btn) btn.disabled = false;
+}
+
+// AI 状态全局轮询（总览页板块 + AI 助手页共用）
+aiRefreshStatus();
+setInterval(aiRefreshStatus, 30000);
+</script>
+</body>
+</html>
