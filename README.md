@@ -1,4 +1,4 @@
-# PopDEX 主网网格交易机器人
+﻿# PopDEX 主网网格交易机器人
 
 本项目是一个本地仪表盘形式的 PopDEX 网格机器人，参考 `3xx-wangge` 的核心策略：等间距算术网格、初始两侧挂单、成交后相邻反向补单，支持中性/做多/做空三种模式。趋势分析使用 15m、1H、4H 多周期 EMA20/EMA50、RSI、ATR 进行只读判断，不会自动改变网格或下单。Telegram 仅推送分析报告和风控哨兵，不推送买卖成交、同步异常或普通运行错误。
 
@@ -30,17 +30,13 @@ POPDEX_TICKER_JSON_PATH=data.0.lastPrice
 POPDEX_API_CATEGORY=Futures
 ```
 
-实盘启动前必须填入以下值：
+实盘启动前，普通使用只需要在 PopDEX 页面的钱包授权区域填写 **Agent 私钥** 和 **主账户地址**；也可以连接钱包自动读取主账户地址。交易对、K线周期、网格上下边界、网格数量、网格模式、每格数量和杠杆均在前端选择/填写。
+
+`.env` 中不需要再填写交易对、RPC、订单合约、Symbol ID、Category 或 Position Side；这些固定的 PopDEX 运行参数由程序默认提供，市场和策略参数由前端处理。只需要填写：
 
 ```ini
-POPDEX_SYMBOL=<当前实际交易对>
-POPDEX_RPC_URL=<主网 RPC>
 POPDEX_AGENT_PRIVATE_KEY=0x<已授权 Agent Account 私钥>
 POPDEX_MAIN_ACCOUNT=0x<主账户地址>
-POPDEX_ORDER_CONTRACT=0x<PopDEX 当前订单合约或预编译地址>
-POPDEX_SYMBOL_ID=<与交易对匹配的数值 ID>
-POPDEX_CATEGORY=<链上 category 枚举值>
-POPDEX_POSITION_SIDE=<链上 position-side 枚举值>
 ```
 
 私钥只能是经主账户链上授权、仅用于交易的 **Agent Account** 私钥；不要填写主钱包私钥。

@@ -533,6 +533,10 @@ th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppe
       <button class="btn btn-stop" id="de-stop-btn" disabled>停止 PopDEX 网格</button>
       <div class="panel" style="margin-top:12px;border:1px solid var(--pur2)">
         <div class="panel-title" style="color:#c4b5fd">钱包授权</div>
+        <label>Agent 私钥（仅用于启动，不回显已有值）</label>
+        <input id="de-agent-private-key" type="password" autocomplete="off" placeholder="0x…">
+        <label style="margin-top:8px">主账户地址</label>
+        <input id="de-main-account" type="text" autocomplete="off" placeholder="0x…">
         <button class="btn btn-smart" id="popdex-connect-wallet" style="margin-top:4px">连接钱包并读取账户</button>
         <button class="btn btn-ghost" id="popdex-authorize-agent" style="margin-top:8px">授权 Agent 下单</button>
         <div id="popdex-wallet-status" class="muted" style="margin-top:8px">尚未连接钱包</div>
@@ -1035,7 +1039,7 @@ setInterval(() => { $('hdr-time').textContent = new Date().toLocaleTimeString('z
 // ══════════════════════════════════════════════════════════════════════════════
 let popdexWalletAddress='';
 function walletProvider(){if(window.okxwallet?.ethereum)return window.okxwallet.ethereum;if(window.okxwallet)return window.okxwallet;if(window.ethereum)return window.ethereum;throw Error('未检测到钱包扩展')}
-async function connectPopdexWallet(){const st=$('popdex-wallet-status');try{const p=walletProvider(),a=(await p.request({method:'eth_requestAccounts'}))[0];const chain=Number.parseInt(await p.request({method:'eth_chainId'}),16);if(chain!==2184)throw Error('请切换到 PopDEX 主网，Chain ID 2184');popdexWalletAddress=a;const sr=await fetch('/api/state',{cache:'no-store'});const ss=await sr.json();if(!ss.running){const cr=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mainAccount:a})});const cj=await cr.json();if(!cr.ok||cj.error)throw Error(cj.error||'钱包地址保存失败');st.textContent='钱包已连接，主账户已自动保存：'+a; }else{st.textContent='钱包已连接：'+a+'（当前网格运行中，不改动运行配置）';}st.className='up'}catch(e){st.textContent='连接失败：'+e.message;st.className='down'}}
+async function connectPopdexWallet(){const st=$('popdex-wallet-status');try{const p=walletProvider(),a=(await p.request({method:'eth_requestAccounts'}))[0];const chain=Number.parseInt(await p.request({method:'eth_chainId'}),16);if(chain!==2184)throw Error('请切换到 PopDEX 主网，Chain ID 2184');popdexWalletAddress=a;$('de-main-account').value=a;const sr=await fetch('/api/state',{cache:'no-store'});const ss=await sr.json();if(!ss.running){const cr=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mainAccount:a})});const cj=await cr.json();if(!cr.ok||cj.error)throw Error(cj.error||'钱包地址保存失败');st.textContent='钱包已连接，主账户已自动保存：'+a; }else{st.textContent='钱包已连接：'+a+'（当前网格运行中，不改动运行配置）';}st.className='up'}catch(e){st.textContent='连接失败：'+e.message;st.className='down'}}
 async function authorizePopdexAgent(){const st=$('popdex-wallet-status');st.textContent='Agent 私钥由后端 .env 管理；如链上已授权，无需重复授权。';st.className='up'}
 $('popdex-connect-wallet').onclick=connectPopdexWallet;$('popdex-authorize-agent').onclick=authorizePopdexAgent;
 
@@ -1229,8 +1233,10 @@ function makeExchangeCtrl(prefix, chartId) {
 
   P('start-btn').onclick = async () => {
     const lower = +P('lower').value, upper = +P('upper').value, market = String(P('market').value || 'BTCUSDT');
-    const body = {mode:'live',symbol:market,mainAccount:popdexWalletAddress||undefined, gridMode:selectedMode, lower, upper, gridCount:+P('grid-count').value, sizeBase:+P('size-base').value, leverage:+P('leverage').value, apiCategory:'Futures'};
-    if (!popdexWalletAddress) { alert('请先连接钱包读取主账户地址；Agent 链上授权无需重复。'); return; }
+    const agentPrivateKey=String(document.getElementById('de-agent-private-key')?.value||'').trim();
+    const mainAccount=String(document.getElementById('de-main-account')?.value||popdexWalletAddress||'').trim();
+    const body = {mode:'live',symbol:market,agentPrivateKey,mainAccount, gridMode:selectedMode, lower, upper, gridCount:+P('grid-count').value, sizeBase:+P('size-base').value, leverage:+P('leverage').value, apiCategory:'Futures'};
+    if (!agentPrivateKey || !mainAccount) { alert('请填写 Agent 私钥和主账户地址，或先连接钱包读取主账户地址。'); return; }
     const r = await fetch('/api/start', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const j=await r.json(); if(j.error) alert('实盘启动失败：'+j.error);
   };
 
