@@ -1096,13 +1096,13 @@ function makeExchangeCtrl(prefix, chartId) {
     trendRefreshing = true;
     P('rec-tag').textContent = '分析中…';
     try {
-      const r = await fetch(prefix === 'de' ? `/api/candles?symbol=${encodeURIComponent(P('market').value)}&category=Futures&interval=${P('interval').value === '3600' ? '1H' : P('interval').value === '14400' ? '4H' : '15m'}&limit=120` : `/api/${prefix}/trend?marketId=${marketId}&intervalSec=${P('interval').value}`, { cache: 'no-store' });
+      const r = await fetch(prefix === 'de' ? `/api/trend?symbol=${encodeURIComponent(P('market').value)}&category=Futures` : `/api/${prefix}/trend?marketId=${marketId}&intervalSec=${P('interval').value}`, { cache: 'no-store' });
       const j = await r.json();
       if (prefix === 'de') {
-        const candles = (j.data || []).map(x => ({time:+x.time,open:+x.open,high:+x.high,low:+x.low,close:+x.close}));
-        const price = Number(candles.at(-1)?.close);
-        curTrend = {trend:'range',recommended:'neutral',strength:0,atrPct:.8,price,detail:'PopDEX K线已加载，可采用推荐区间或手动设置。'};
-        renderTrend(curTrend); if (candles.length >= 2) drawChart(candles); if (!P('lower').value) applyAutoRange();
+        curTrend = j.analysis; renderTrend(curTrend);
+        const candleRes = await fetch(`/api/candles?symbol=${encodeURIComponent(P('market').value)}&category=Futures&interval=${P('interval').value === '3600' ? '1H' : P('interval').value === '14400' ? '4H' : '15m'}&limit=120`, {cache:'no-store'});
+        const candleJson = await candleRes.json(); const candles=(candleJson.data||[]).map(x=>({time:+x.time,open:+x.open,high:+x.high,low:+x.low,close:+x.close}));
+        if (candles.length >= 2) drawChart(candles); if (!P('lower').value) applyAutoRange();
       } else {
         if (j.error) throw new Error(j.error); curTrend = j.analysis; renderTrend(j.analysis); if (Array.isArray(j.candles) && j.candles.length >= 2) drawChart(j.candles); if (!P('lower').value) applyAutoRange();
       }
