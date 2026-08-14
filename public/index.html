@@ -515,11 +515,11 @@ th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppe
         <div><label>上边界</label><input id="de-upper" type="number" step="any"></div>
       </div>
       <div class="row">
-        <div><label>网格数量</label><input id="de-grid-count" type="number" value="20" min="2"></div>
+        <div><label>网格数量（自动预填）</label><input id="de-grid-count" type="number" value="40" min="2"></div>
         <div><label>每格数量(币)</label><input id="de-size-base" type="number" step="any" value="0.0002"></div>
       </div>
       <div class="row">
-        <div><label>杠杆 (x)</label><input id="de-leverage" type="number" value="3" min="1"></div>
+        <div><label>杠杆 (x，自动预填）</label><input id="de-leverage" type="number" value="20" min="1"></div>
         <div>
           <label>区间外止损策略</label>
           <select id="de-auto-stop">
@@ -1000,8 +1000,15 @@ th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppe
 <script>
 // ── 工具函数 ────────────────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
-const fmt = (v, d=2) => v == null ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
-const signed = (v) => v == null ? '—' : (v >= 0 ? '+' : '') + fmt(v);
+const fmt = (v, d=2) => {
+  if (v == null) return '—';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  const factor = 10 ** d;
+  const rounded = Math.round((n + Math.sign(n) * Number.EPSILON) * factor) / factor;
+  return rounded.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+};
+const signed = (v, d=2) => v == null ? '—' : (v >= 0 ? '+' : '') + fmt(v, d);
 const cls = (v) => v == null ? '' : (v >= 0 ? 'up' : 'down');
 const round = (x) => Math.round(x * 100) / 100;
 const pnlHtml = (v) => v == null ? '—' : `<span class="${cls(v)}">${signed(v)}</span>`;
@@ -1028,7 +1035,7 @@ setInterval(() => { $('hdr-time').textContent = new Date().toLocaleTimeString('z
 // ══════════════════════════════════════════════════════════════════════════════
 let popdexWalletAddress='';
 function walletProvider(){if(window.okxwallet?.ethereum)return window.okxwallet.ethereum;if(window.okxwallet)return window.okxwallet;if(window.ethereum)return window.ethereum;throw Error('未检测到钱包扩展')}
-async function connectPopdexWallet(){const st=$('popdex-wallet-status');try{const p=walletProvider(),a=(await p.request({method:'eth_requestAccounts'}))[0];const chain=Number.parseInt(await p.request({method:'eth_chainId'}),16);if(chain!==2184)throw Error('请切换到 PopDEX 主网，Chain ID 2184');popdexWalletAddress=a;st.textContent='钱包已连接：'+a+'，账户读取入口已准备';st.className='up'}catch(e){st.textContent='连接失败：'+e.message;st.className='down'}}
+async function connectPopdexWallet(){const st=$('popdex-wallet-status');try{const p=walletProvider(),a=(await p.request({method:'eth_requestAccounts'}))[0];const chain=Number.parseInt(await p.request({method:'eth_chainId'}),16);if(chain!==2184)throw Error('请切换到 PopDEX 主网，Chain ID 2184');popdexWalletAddress=a;const sr=await fetch('/api/state',{cache:'no-store'});const ss=await sr.json();if(!ss.running){const cr=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mainAccount:a})});const cj=await cr.json();if(!cr.ok||cj.error)throw Error(cj.error||'钱包地址保存失败');st.textContent='钱包已连接，主账户已自动保存：'+a; }else{st.textContent='钱包已连接：'+a+'（当前网格运行中，不改动运行配置）';}st.className='up'}catch(e){st.textContent='连接失败：'+e.message;st.className='down'}}
 async function authorizePopdexAgent(){const st=$('popdex-wallet-status');st.textContent='Agent 私钥由后端 .env 管理；如链上已授权，无需重复授权。';st.className='up'}
 $('popdex-connect-wallet').onclick=connectPopdexWallet;$('popdex-authorize-agent').onclick=authorizePopdexAgent;
 
@@ -1074,6 +1081,8 @@ function makeExchangeCtrl(prefix, chartId) {
       const hdrBadge = $('hdr-' + prefix);
       if (hdrBadge) { hdrBadge.textContent = 'POPDEX: ' + ((j.mode || 'live').toUpperCase()); hdrBadge.className = 'badge ' + ((j.mode === 'live') ? 'badge-live' : 'badge-paper'); }
       P('market').innerHTML = markets.map(m => `<option value="${m.marketId}">${m.displayName}</option>`).join('');
+      const preferred = markets.find(m => String(m.marketId).toUpperCase() === 'BTCUSDT');
+      if (preferred) P('market').value = preferred.marketId;
       if (markets[0]) P('size-base').value = 0.0002;
       if (lastState?.running && lastState?.config) await syncFormToRunningConfig(lastState); else await refreshTrend();
     } catch (e) { console.error(`[${prefix}] loadMarkets failed:`, e.message); }
@@ -1220,7 +1229,7 @@ function makeExchangeCtrl(prefix, chartId) {
 
   P('start-btn').onclick = async () => {
     const lower = +P('lower').value, upper = +P('upper').value, market = String(P('market').value || 'BTCUSDT');
-    const body = {mode:'live',symbol:market, gridMode:selectedMode, lower, upper, gridCount:+P('grid-count').value, sizeBase:+P('size-base').value, leverage:+P('leverage').value, apiCategory:'Futures'};
+    const body = {mode:'live',symbol:market,mainAccount:popdexWalletAddress||undefined, gridMode:selectedMode, lower, upper, gridCount:+P('grid-count').value, sizeBase:+P('size-base').value, leverage:+P('leverage').value, apiCategory:'Futures'};
     if (!popdexWalletAddress) { alert('请先连接钱包读取主账户地址；Agent 链上授权无需重复。'); return; }
     const r = await fetch('/api/start', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const j=await r.json(); if(j.error) alert('实盘启动失败：'+j.error);
   };
@@ -1324,22 +1333,22 @@ function makeExchangeCtrl(prefix, chartId) {
     if (s.position) {
       const long = s.position.sizeBase > 0;
       const levTxt = s.position.leverage ? ` <span class="muted">@${s.position.leverage}x</span>` : '';
-      P('st-pos').innerHTML = `<span class="${long?'up':'down'}">${long?'多':'空'} ${Math.abs(Number(s.position.sizeBase)).toFixed(4)}</span>${levTxt}`;
-      P('st-entry').textContent = s.position.entryPrice == null ? '—' : Number(s.position.entryPrice).toFixed(2);
-      P('st-upnl').innerHTML = pnlHtml(s.position.unrealizedPnl);
+      P('st-pos').innerHTML = `<span class="${long?'up':'down'}">${long?'多':'空'} ${Math.abs(Number(s.position.sizeBase)).toFixed(3)}</span>${levTxt}`;
+      P('st-entry').textContent = s.position.entryPrice == null ? '—' : Number(s.position.entryPrice).toFixed(3);
+      P('st-upnl').innerHTML = s.position.unrealizedPnl == null ? '—' : `<span class="${cls(s.position.unrealizedPnl)}">${signed(s.position.unrealizedPnl, 3)}</span>`;
     } else {
       P('st-pos').textContent = '无持仓';
       P('st-entry').textContent = '—';
       P('st-upnl').textContent = '—';
     }
-    P('st-rpnl').innerHTML = pnlHtml(s.realizedPnl);
+    P('st-rpnl').innerHTML = s.realizedPnl == null ? '—' : `<span class="${cls(s.realizedPnl)}">${signed(s.realizedPnl, 3)}</span>`;
     const orphan = P('orphan-prompt');
     if (orphan) {
       const showOrphan = !!(s.position && !s.running && !s.recovery);
       orphan.style.display = showOrphan ? 'block' : 'none';
       if (showOrphan) {
         const long = s.position.sizeBase > 0;
-        P('orphan-info').innerHTML = `未托管持仓：<b class="${long ? 'up' : 'down'}">${long ? '多' : '空'} ${Math.abs(s.position.sizeBase)}</b> @ 均价 ${s.position.entryPrice} · 未实现盈亏 ${pnlHtml(s.position.unrealizedPnl)}。程序当前未在管理这笔仓位，请选择处理方式。`;
+        P('orphan-info').innerHTML = `未托管持仓：<b class="${long ? 'up' : 'down'}">${long ? '多' : '空'} ${Math.abs(Number(s.position.sizeBase)).toFixed(3)}</b> @ 均价 ${s.position.entryPrice == null ? '—' : Number(s.position.entryPrice).toFixed(3)} · 未实现盈亏 ${pnlHtml(s.position.unrealizedPnl)}。程序当前未在管理这笔仓位，请选择处理方式。`;
       }
     }
     P('st-total').innerHTML = `${pnlHtml(s.totalPnl)} <span class="muted">/ ${s.returnPct != null ? `<span class="${cls(s.returnPct)}">${s.returnPct>=0?'+':''}${s.returnPct}%</span>` : '—'}</span>`;

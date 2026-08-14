@@ -39,6 +39,7 @@ if(url.pathname==='/api/agent/create'&&req.method==='POST')return json(res,200,c
 if(url.pathname==='/api/agent/prepare-approval'&&req.method==='POST')return json(res,200,prepareAgentApproval(await body(req)));
 if(url.pathname==='/api/config'&&req.method==='POST')return json(res,200,runner.update(await body(req)));
 if(url.pathname==='/api/start'&&req.method==='POST')return json(res,200,await runner.start(await body(req)));
+if(url.pathname==='/api/adopt-existing'&&req.method==='POST')return json(res,200,await runner.adoptExisting());
 if(url.pathname==='/api/stop'&&req.method==='POST')return json(res,200,await runner.stop());
 if(url.pathname==='/api/replace-grid'&&req.method==='POST')return json(res,200,await runner.replaceOfficialGrid());
 if(url.pathname==='/api/cancel-orders'&&req.method==='POST')return json(res,409,{ok:false,error:'PopDEX 撤单链路尚未完成验证，未执行撤单。请勿把面板 active 记录当作官方委托。'});
