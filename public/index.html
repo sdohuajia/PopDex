@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>网格交易总控台</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- 钱包签名使用浏览器端 ethers；不把主钱包私钥发送到后端。 -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.16.0/dist/ethers.umd.min.js"></script>
 <style>
 :root {
   --bg: #0a0e17;
@@ -1040,7 +1042,43 @@ setInterval(() => { $('hdr-time').textContent = new Date().toLocaleTimeString('z
 let popdexWalletAddress='';
 function walletProvider(){if(window.okxwallet?.ethereum)return window.okxwallet.ethereum;if(window.okxwallet)return window.okxwallet;if(window.ethereum)return window.ethereum;throw Error('未检测到钱包扩展')}
 async function connectPopdexWallet(){const st=$('popdex-wallet-status');try{const p=walletProvider(),a=(await p.request({method:'eth_requestAccounts'}))[0];const chain=Number.parseInt(await p.request({method:'eth_chainId'}),16);if(chain!==2184)throw Error('请切换到 PopDEX 主网，Chain ID 2184');popdexWalletAddress=a;$('de-main-account').value=a;const sr=await fetch('/api/state',{cache:'no-store'});const ss=await sr.json();if(!ss.running){const cr=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mainAccount:a})});const cj=await cr.json();if(!cr.ok||cj.error)throw Error(cj.error||'钱包地址保存失败');st.textContent='钱包已连接，主账户已自动保存：'+a; }else{st.textContent='钱包已连接：'+a+'（当前网格运行中，不改动运行配置）';}st.className='up'}catch(e){st.textContent='连接失败：'+e.message;st.className='down'}}
-async function authorizePopdexAgent(){const st=$('popdex-wallet-status');st.textContent='Agent 私钥由后端 .env 管理；如链上已授权，无需重复授权。';st.className='up'}
+async function authorizePopdexAgent(){
+  const st=$('popdex-wallet-status'),btn=$('popdex-authorize-agent');
+  try{
+    if(!window.ethers)throw Error('钱包签名组件加载失败，请检查网络后刷新页面');
+    if(btn){btn.disabled=true;btn.textContent='准备授权…';}
+    const provider=walletProvider();
+    const accounts=await provider.request({method:'eth_requestAccounts'});
+    const delegator=accounts?.[0];
+    if(!delegator)throw Error('未获取到主钱包地址');
+    const chainId=Number.parseInt(await provider.request({method:'eth_chainId'}),16);
+    if(chainId!==2184)throw Error('请先切换到 PopDEX 主网（Chain ID 2184）');
+    let agentPrivateKey=String($('de-agent-private-key')?.value||'').trim(),agentAddress='';
+    if(agentPrivateKey){agentAddress=new ethers.Wallet(agentPrivateKey).address;}
+    else{
+      st.textContent='正在生成独立 Agent Key…';
+      const created=await (await fetch('/api/agent/create',{method:'POST'})).json();
+      if(!created.agentPrivateKey||!created.agentAddress)throw Error('Agent Key 生成失败');
+      agentPrivateKey=created.agentPrivateKey;agentAddress=created.agentAddress;
+      $('de-agent-private-key').value=agentPrivateKey;
+    }
+    $('de-main-account').value=delegator;
+    st.textContent='正在请求钱包签名，请在钱包扩展中确认 approveAgent…';
+    if(btn)btn.textContent='等待钱包签名…';
+    const prepared=await (await fetch('/api/agent/prepare-approval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentAddress,delegator,name:'PopDEX Grid',isGlobal:true})})).json();
+    if(!prepared.to||!prepared.data)throw Error(prepared.error||'授权交易构建失败');
+    const txHash=await provider.request({method:'eth_sendTransaction',params:[{from:delegator,to:prepared.to,data:prepared.data,value:prepared.value||'0x0',chainId:'0x888'}]});
+    st.textContent=`已发起 Agent 授权交易：${txHash.slice(0,10)}…${txHash.slice(-8)}，等待链上确认…`;
+    if(btn)btn.textContent='等待链上确认…';
+    const browserProvider=new ethers.BrowserProvider(provider);
+    const receipt=await browserProvider.waitForTransaction(txHash,1,120000);
+    if(!receipt||receipt.status!==1)throw Error('授权交易未成功确认');
+    const cr=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mainAccount:delegator,agentPrivateKey})});
+    const cj=await cr.json();if(!cr.ok||cj.error)throw Error(cj.error||'链上已授权，但本地 Agent 设置保存失败');
+    st.textContent=`✅ Agent 已链上授权并保存本地执行配置：${agentAddress.slice(0,8)}…${agentAddress.slice(-6)}`;st.className='up';
+  }catch(e){st.textContent='授权失败：'+(e?.message||e);st.className='down';
+  }finally{if(btn){btn.disabled=false;btn.textContent='授权 Agent 下单';}}
+}
 $('popdex-connect-wallet').onclick=connectPopdexWallet;$('popdex-authorize-agent').onclick=authorizePopdexAgent;
 
 function makeExchangeCtrl(prefix, chartId) {
