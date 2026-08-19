@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>网格交易总控台</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<!-- 钱包签名使用浏览器端 ethers；不把主钱包私钥发送到后端。 -->
+<!-- 浏览器钱包授权；主钱包私钥不会发送至服务器。 -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.16.0/dist/ethers.umd.min.js"></script>
 <style>
 :root {
@@ -96,7 +96,7 @@ body {
 .panel.rs { border-top: 2px solid var(--rs-color); }
 
 /* ── Overview cards ── */
-.overview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+.overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
 .ov-card {
   background: var(--panel); border: 1px solid var(--border);
   border-radius: 10px; padding: 14px 16px;
@@ -293,7 +293,7 @@ th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppe
 /* PopDEX-only frontend: keep dormant EX/RS DOM nodes hidden so legacy
    controller code remains harmless while the user-facing UI is single venue. */
 #tab-ex, #tab-rs, .ov-card.ex, .ov-card.rs, .project-ex, .project-rs { display:none !important; }
-.overview-grid { grid-template-columns:minmax(0, 1fr); }
+.overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 /* ── Responsive ── */
 @media (max-width: 1100px) {
@@ -313,7 +313,8 @@ th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppe
 <div class="header">
   <div class="header-logo">PopDEX <span>网格控制台</span></div>
   <div class="header-sep"></div>
-  <span class="hdot idle" id="hdr-de-dot" title=""></span><span id="hdr-de" class="badge badge-paper">DE: PAPER</span>
+  <span class="hdot idle" id="hdr-de-dot" title=""></span><span id="hdr-de" class="badge badge-paper">POPDEX: LIVE</span>
+  <span class="hdot idle" id="hdr-ondo-dot" title=""></span><span id="hdr-ondo" class="badge badge-paper">ONDO: LIVE</span>
   <div class="header-right">
     <span id="hdr-proxy" class="conn" title="全局代理状态"><span class="cdot"></span><span id="hdr-proxy-txt">代理检测中…</span></span>
     <span id="hdr-conn" class="conn warn" title="后端连接状态"><span class="cdot"></span><span id="hdr-conn-txt">连接中…</span></span>
@@ -325,6 +326,7 @@ th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppe
 <div class="main-tabs">
   <button class="tab-btn active" onclick="switchTab('overview')">📊 总览</button>
   <button class="tab-btn" onclick="switchTab('de')"><span class="dot-de">●</span> PopDEX</button>
+  <button class="tab-btn" onclick="switchTab('ondo')"><span style="color:#fbbf24">●</span> Ondo Perp</button>
   <button class="tab-btn" onclick="switchTab('ai')">🤖 AI助手</button>
   <button class="tab-btn" onclick="switchTab('settings')">⚙ IP配置</button>
 </div>
@@ -439,9 +441,37 @@ th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppe
       <div id="ov-rs-ai" class="ai-box muted" style="display:none;margin-top:8px;font-size:12px"></div>
       <div id="ov-rs-trend" class="trend-box trend-idle">趋势监测：等待数据…</div>
     </div>
-  </div>
+    <!-- Ondo Perp（独立实盘网格概览） -->
+    <div class="ov-card" style="border-top:2px solid #fbbf24">
+      <div class="ov-exname" style="color:#fbbf24">
+        <span class="run-dot" id="ov-ondo-dot"></span>
+        Ondo Perp
+        <span id="ov-ondo-badge" class="badge badge-paper" style="margin-left:auto">NEW API · READY</span>
+      </div>
+      <div id="ov-ondo-health" class="exhealth eh-idle">—</div>
+      <div class="ov-pnl" id="ov-ondo-pnl">—</div>
+      <div class="ov-sub" id="ov-ondo-ret">官方账户回读</div>
+      <div style="margin-top:10px">
+        <div class="ov-stat"><span class="lbl">余额</span><span class="val" id="ov-ondo-bal">—</span></div>
+        <div class="ov-stat"><span class="lbl">权益</span><span class="val" id="ov-ondo-eq">—</span></div>
+        <div class="ov-stat"><span class="lbl">已实现</span><span class="val" id="ov-ondo-rpnl">—</span></div>
+        <div class="ov-stat"><span class="lbl">未实现</span><span class="val" id="ov-ondo-upnl">—</span></div>
+        <div class="ov-stat"><span class="lbl">累计资金费</span><span class="val" id="ov-ondo-funding" title="官方 totalFundingPayments；正数为净收取，负数为净支付">—</span></div>
+        <div class="ov-stat"><span class="lbl">累计手续费</span><span class="val" id="ov-ondo-fees" title="官方 totalTradingFees；总盈亏公式中按费用扣减">—</span></div>
+        <div class="ov-stat"><span class="lbl">累计交易量</span><span class="val" id="ov-ondo-vol">暂不可用</span></div>
+        <div class="ov-stat"><span class="lbl">今日交易量</span><span class="val" id="ov-ondo-vol-today">暂不可用</span></div>
+        <div class="ov-stat"><span class="lbl">昨日交易量</span><span class="val" id="ov-ondo-vol-yesterday">官方日统计不可用</span></div>
+        <div class="ov-stat"><span class="lbl">完成网格</span><span class="val" id="ov-ondo-rungs">暂不可用</span></div>
+        <div class="ov-stat"><span class="lbl">最新价</span><span class="val" id="ov-ondo-price">—</span></div>
+        <div class="ov-stat"><span class="lbl">当前市场</span><span class="val" id="ov-ondo-mkt">—</span></div>
+      </div>
+      <div id="ov-ondo-detail" class="gridcfg" style="display:none"></div>
+      <div id="ov-ondo-ai" class="ai-box muted" style="display:none;margin-top:8px;font-size:12px"></div>
+      <div id="ov-ondo-trend" class="trend-box trend-idle">趋势监测：等待 Ondo 行情…</div>
+      <button class="btn btn-ghost" style="margin-top:10px;font-size:12px" onclick="refreshOndoConnection(this)">🔌 刷新 Ondo 数据（不动挂单/持仓）</button>
+      <button class="btn btn-ghost" style="margin-top:8px;font-size:12px" onclick="switchTab('ondo')">进入 Ondo 控制台 →</button>
+    </div>
 
-  <!-- AI 市况分析（BTC，定时报告） -->
   <div class="panel" style="margin-top:14px">
     <div class="panel-title">🤖 AI 市况分析 · BTC<span id="ov-ai-mkt-time" class="muted" style="font-size:11px;margin-left:10px;font-weight:400"></span></div>
     <div id="ov-ai-market" class="ai-box muted">等待首次分析…（需先在「🤖 AI助手」页配置 API Key）</div>
@@ -457,6 +487,7 @@ th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppe
     </div>
   </div>
 
+</div>
 </div>
 </div>
 
@@ -531,6 +562,7 @@ th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppe
         </div>
       </div>
       <div class="risk-preview" id="de-risk-preview"></div>
+      <div class="risk-preview" id="de-capacity-preview">官方容量预检：修改网格数量、每格数量或杠杆后自动计算；不会下单。</div>
       <button class="btn btn-start" id="de-start-btn">启动 PopDEX 网格</button>
       <button class="btn btn-stop" id="de-stop-btn" disabled>停止 PopDEX 网格</button>
       <div class="panel" style="margin-top:12px;border:1px solid var(--pur2)">
@@ -544,7 +576,7 @@ th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppe
         <div id="popdex-wallet-status" class="muted" style="margin-top:8px">尚未连接钱包</div>
       </div>
       <button class="btn btn-ghost" id="de-adjust-btn" disabled style="margin-top:8px">调整区间（不停止网格）</button>
-      <button class="btn btn-ghost" id="de-cancel-orders-btn" style="margin-top:8px;border-color:var(--yel);color:var(--yel)">撤销所有挂单（保留持仓）</button>
+      <button class="btn btn-red" id="de-cancel-orders-btn" disabled style="margin-top:8px">撤销当前策略挂单（保留持仓）</button>
     </div>
   </div>
 
@@ -593,6 +625,66 @@ th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppe
         <div class="log" id="de-alerts"><div class="log-item muted">暂无日志</div></div>
       </div>
     </div>
+  </div>
+</div>
+</div>
+</div>
+
+<div id="tab-ondo" class="tab-panel">
+<div class="wrap">
+<div class="grid-left-right">
+  <div>
+    <div class="panel de" style="margin-bottom:14px">
+      <div class="panel-title" style="color:#fbbf24">Ondo Perp · 市场与趋势</div>
+      <label>交易对</label>
+      <select id="ondo-market"><option value="BTC-USD.P">BTCUSD · Bitcoin</option></select>
+      <div class="row" style="margin-top:8px">
+        <div><label>K线周期</label><select id="ondo-interval"><option>15m</option><option selected>1h</option><option>4h</option><option>1d</option></select></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn btn-ghost" style="margin:0;padding:7px" id="ondo-refresh-btn" onclick="refreshOndoOverview()">刷新</button></div>
+      </div>
+      <div style="margin-top:10px" id="ondo-rec-box" class="rec-box rec-range">
+        <div class="muted">趋势分析</div><div class="rec-tag" id="ondo-rec-tag">只读账户模式</div>
+        <div class="rec-detail" id="ondo-rec-detail">新 Ondo 行情接口待确认；当前不显示伪造行情。</div>
+        <button class="btn btn-ghost" style="margin-top:8px;padding:6px;font-size:12px" id="ondo-apply-rec">采用推荐策略 + 自动区间</button>
+      </div>
+    </div>
+    <div class="panel de" style="margin-bottom:14px">
+      <div class="panel-title" style="color:#fbbf24">Ondo Perp · 策略配置</div>
+      <label>网格类型</label>
+      <div class="modes" id="ondo-modes"><div class="mode-btn sel" data-mode="neutral">中性<small>双向震荡</small></div><div class="mode-btn" data-mode="long">做多<small>低买高止</small></div><div class="mode-btn" data-mode="short">做空<small>高空低止</small></div></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px"><span class="muted">风格</span><div class="risk-toggle" id="ondo-risk-toggle"><span class="risk-btn sel" data-risk="steady">稳健</span><span class="risk-btn" data-risk="aggressive">激进</span></div><span class="muted" id="ondo-risk-hint">成交少·更安全</span></div>
+      <button class="btn btn-smart" id="ondo-smart-fill">🎯 智能填充参数</button><div class="muted" id="ondo-smart-note" style="margin:5px 0 2px"></div>
+      <div class="row"><div><label>下边界</label><input id="ondo-lower" type="number" step="any" placeholder="—"></div><div><label>上边界</label><input id="ondo-upper" type="number" step="any" placeholder="—"></div></div>
+      <div class="row"><div><label>网格数量（自动预填）</label><input id="ondo-grid-count" type="number" min="2" value="12"></div><div><label>每格数量(币) · 自动计算，可手动修改</label><input id="ondo-size" type="number" step="any" placeholder="按资产中间数自动计算"></div></div>
+      <div class="row"><div><label>杠杆 (x，自动预填）</label><input id="ondo-leverage" type="number" min="1" max="20" value="5"></div><div><label>区间外止损策略（Ondo 独立）</label><select id="ondo-out-range" data-venue="ondo"><option value="close">冲破区间平仓</option><option value="recover">只减仓回收阶梯</option></select></div></div>
+      <div class="risk-preview" id="ondo-risk-preview">请选择网格类型并填写区间；保存只生成配置草稿，不会下单。</div><div class="risk-preview" id="ondo-margin-preview">总保证金需求：等待区间和每格数量计算…</div><div class="risk-preview" id="ondo-fee-preview">每格利润：等待区间和手续费计算…</div>
+      <button class="btn btn-ghost" id="ondo-save-config">保存 Ondo 策略配置（只保存）</button>
+      <button class="btn btn-start" id="ondo-start-btn" title="将向 Ondo 实盘提交限价网格订单">启动 Ondo 实盘网格</button><button class="btn btn-stop" id="ondo-stop-btn">停止 Ondo 网格并撤销本策略市场挂单</button>
+      <button class="btn btn-ghost" id="ondo-adjust-btn" title="仅定向撤销当前策略开放订单，官方确认后按表单参数重建网格" style="margin-top:8px">调整区间并重建</button>
+      <button class="btn btn-ghost" id="ondo-cancel-orders-btn" title="撤销当前 Ondo 市场全部挂单，不平仓" style="margin-top:8px;border-color:var(--yel);color:var(--yel)">撤销所有挂单（保留持仓）</button>
+      <div class="muted" style="margin-top:8px;color:var(--yellow)">当前为 Ondo 实盘限价网格：启动会真实提交订单；停止会撤销该市场挂单但不会主动平仓。请确认区间、数量和杠杆后再启动。</div>
+    </div>
+  </div>
+  <div>
+    <div class="panel" style="margin-bottom:14px">
+      <div class="panel-title">Ondo Perp · 账户状态</div>
+      <div class="grid-2" style="gap:10px;margin-bottom:10px"><div>
+        <div class="kv"><span class="lbl">连接状态</span><span class="val" id="ondo-console-health">读取中</span></div>
+        <div class="kv"><span class="lbl">最新价</span><span class="val" id="ondo-console-price">—</span></div>
+        <div class="kv"><span class="lbl">账户余额</span><span class="val" id="ondo-console-bal">—</span></div>
+        <div class="kv"><span class="lbl">权益</span><span class="val" id="ondo-console-equity">—</span></div></div><div>
+        <div class="kv"><span class="lbl">持仓</span><span class="val" id="ondo-console-pos-count">—</span></div>
+        <div class="kv"><span class="lbl">持仓均价</span><span class="val" id="ondo-console-entry">—</span></div>
+        <div class="kv"><span class="lbl">已实现盈亏</span><span class="val" id="ondo-console-rpnl">—</span></div>
+        <div class="kv"><span class="lbl">未实现盈亏</span><span class="val" id="ondo-console-upnl">—</span></div>
+        <div class="kv"><span class="lbl">累计资金费</span><span class="val" id="ondo-console-funding" title="官方 totalFundingPayments；正数为净收取，负数为净支付">—</span></div>
+        <div class="kv"><span class="lbl">累计手续费</span><span class="val" id="ondo-console-fees" title="官方 totalTradingFees；总盈亏公式中按费用扣减">—</span></div></div></div>
+      <div class="kv"><span class="lbl">总盈亏 / 收益率</span><span class="val" id="ondo-console-total">—</span></div>
+      <div class="kv"><span class="lbl">挂单数 / 完成格</span><span class="val" id="ondo-console-order-count">—</span></div>
+      <div id="ondo-console-errors" class="muted" style="margin-top:12px;color:var(--red);white-space:pre-wrap"></div>
+    </div>
+    <div class="panel" style="margin-bottom:14px"><div class="panel-title">价格 / 网格</div><div id="ondo-range-warn" class="muted">新 Ondo K线接口确认后显示真实图表。</div><div class="chartbox"><canvas id="ondo-chart"></canvas></div></div>
+    <div class="grid-2" style="gap:14px"><div class="panel"><div class="panel-title">成交记录</div><table><thead><tr><th>时间</th><th>方向</th><th>价格</th><th>数量</th></tr></thead><tbody id="ondo-fills"></tbody></table></div><div class="panel"><div class="panel-title">运行日志</div><div class="log" id="ondo-alerts"><div class="log-item muted">暂无日志</div></div></div></div>
   </div>
 </div>
 </div>
@@ -895,6 +987,7 @@ th { color: var(--mut2); font-weight: 600; font-size: 10px; text-transform: uppe
     <div class="panel-title">📈 市况分析（当前适不适合跑网格）</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-ghost" style="margin:0;width:auto;padding:7px 16px;font-size:12px" onclick="aiAnalyze('de', this)">分析 PopDEX</button>
+      <button class="btn btn-ghost" style="margin:0;width:auto;padding:7px 16px;font-size:12px" onclick="aiAnalyze('ondo', this)">分析 Ondo Perp</button>
     </div>
     <div id="ai-analyze-box" class="ai-box muted" style="margin-top:10px">综合 4小时/1小时/15分钟 三个周期的指标判断 PopDEX 市况，给出区间/格数/间距建议。</div>
   </div>
@@ -1028,8 +1121,12 @@ const RISK = {
 function switchTab(name) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  $('tab-' + name).classList.add('active');
-  document.querySelectorAll('.tab-btn')[['overview','de','ex','rs','ai','settings'].indexOf(name)].classList.add('active');
+  const panel=$('tab-' + name);
+  if(!panel)return;
+  panel.classList.add('active');
+  const tabNames=['overview','de','ondo','ex','rs','ai','settings'];
+  const idx=tabNames.indexOf(name);
+  if(idx>=0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   if (name === 'ai') aiRefreshStatus();
 }
 
@@ -1048,36 +1145,29 @@ async function authorizePopdexAgent(){
     if(!window.ethers)throw Error('钱包签名组件加载失败，请检查网络后刷新页面');
     if(btn){btn.disabled=true;btn.textContent='准备授权…';}
     const provider=walletProvider();
-    const accounts=await provider.request({method:'eth_requestAccounts'});
-    const delegator=accounts?.[0];
+    const accounts=await provider.request({method:'eth_requestAccounts'}),delegator=accounts?.[0];
     if(!delegator)throw Error('未获取到主钱包地址');
-    const chainId=Number.parseInt(await provider.request({method:'eth_chainId'}),16);
-    if(chainId!==2184)throw Error('请先切换到 PopDEX 主网（Chain ID 2184）');
+    if(Number.parseInt(await provider.request({method:'eth_chainId'}),16)!==2184)throw Error('请先切换到 PopDEX 主网（Chain ID 2184）');
     let agentPrivateKey=String($('de-agent-private-key')?.value||'').trim(),agentAddress='';
-    if(agentPrivateKey){agentAddress=new ethers.Wallet(agentPrivateKey).address;}
+    if(agentPrivateKey)agentAddress=new ethers.Wallet(agentPrivateKey).address;
     else{
       st.textContent='正在生成独立 Agent Key…';
       const created=await (await fetch('/api/agent/create',{method:'POST'})).json();
       if(!created.agentPrivateKey||!created.agentAddress)throw Error('Agent Key 生成失败');
-      agentPrivateKey=created.agentPrivateKey;agentAddress=created.agentAddress;
-      $('de-agent-private-key').value=agentPrivateKey;
+      agentPrivateKey=created.agentPrivateKey;agentAddress=created.agentAddress;$('de-agent-private-key').value=agentPrivateKey;
     }
-    $('de-main-account').value=delegator;
-    st.textContent='正在请求钱包签名，请在钱包扩展中确认 approveAgent…';
-    if(btn)btn.textContent='等待钱包签名…';
+    $('de-main-account').value=delegator;st.textContent='正在请求钱包签名，请在钱包扩展中确认 approveAgent…';if(btn)btn.textContent='等待钱包签名…';
     const prepared=await (await fetch('/api/agent/prepare-approval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentAddress,delegator,name:'PopDEX Grid',isGlobal:true})})).json();
     if(!prepared.to||!prepared.data)throw Error(prepared.error||'授权交易构建失败');
     const txHash=await provider.request({method:'eth_sendTransaction',params:[{from:delegator,to:prepared.to,data:prepared.data,value:prepared.value||'0x0',chainId:'0x888'}]});
-    st.textContent=`已发起 Agent 授权交易：${txHash.slice(0,10)}…${txHash.slice(-8)}，等待链上确认…`;
-    if(btn)btn.textContent='等待链上确认…';
-    const browserProvider=new ethers.BrowserProvider(provider);
-    const receipt=await browserProvider.waitForTransaction(txHash,1,120000);
+    st.textContent=`已发起 Agent 授权交易：${txHash.slice(0,10)}…${txHash.slice(-8)}，等待链上确认…`;if(btn)btn.textContent='等待链上确认…';
+    const receipt=await new ethers.BrowserProvider(provider).waitForTransaction(txHash,1,120000);
     if(!receipt||receipt.status!==1)throw Error('授权交易未成功确认');
-    const cr=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mainAccount:delegator,agentPrivateKey})});
-    const cj=await cr.json();if(!cr.ok||cj.error)throw Error(cj.error||'链上已授权，但本地 Agent 设置保存失败');
+    const cr=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mainAccount:delegator,agentPrivateKey})}),cj=await cr.json();
+    if(!cr.ok||cj.error)throw Error(cj.error||'链上已授权，但本地 Agent 设置保存失败');
     st.textContent=`✅ Agent 已链上授权并保存本地执行配置：${agentAddress.slice(0,8)}…${agentAddress.slice(-6)}`;st.className='up';
-  }catch(e){st.textContent='授权失败：'+(e?.message||e);st.className='down';
-  }finally{if(btn){btn.disabled=false;btn.textContent='授权 Agent 下单';}}
+  }catch(e){st.textContent='授权失败：'+(e?.message||e);st.className='down';}
+  finally{if(btn){btn.disabled=false;btn.textContent='授权 Agent 下单';}}
 }
 $('popdex-connect-wallet').onclick=connectPopdexWallet;$('popdex-authorize-agent').onclick=authorizePopdexAgent;
 
@@ -1263,18 +1353,22 @@ function makeExchangeCtrl(prefix, chartId) {
     if (!(hi > lo) || !n || !sz) { P('risk-preview').textContent = ''; return; }
     const mid = (lo+hi)/2, spacing = (hi-lo)/n;
     const notional = n*sz*mid, margin = notional/lev;
-    P('risk-preview').innerHTML = `单格间距 <b>${spacing.toPrecision(4)}</b>（${(spacing/mid*100).toFixed(2)}%）· 每格毛利 <b>${(spacing*sz).toPrecision(3)}</b><br>名义敞口 <b>${notional.toFixed(0)}</b> · 约需保证金 <b>${margin.toFixed(0)}</b> USDC（${lev}x）`;
+    P('risk-preview').innerHTML = `单格间距 <b>${spacing.toPrecision(4)}</b>（${(spacing/mid*100).toFixed(2)}%）· 每格毛利 <b>${(spacing*sz).toPrecision(3)}</b><br>总保证金需求 <b>${margin.toFixed(2)}</b> USDC（${n} 格 × 每格名义 ${(sz*mid).toFixed(2)} USDC ÷ ${lev}x）<br>名义敞口 <b>${notional.toFixed(2)}</b> USDC · 杠杆 <b>${lev}x</b>`;
   }
 
-  ['lower','upper','grid-count','size-base','leverage'].forEach(id => P(id).addEventListener('input', updateRiskPreview));
-  ['grid-count','leverage'].forEach(id => P(id).addEventListener('change', sizeByBalance));
+  ['lower','upper'].forEach(id => P(id).addEventListener('input', updateRiskPreview));
+  ['grid-count','size-base','leverage'].forEach(id => P(id).addEventListener('input', () => { updateRiskPreview(); if (prefix === 'de') applyPopdexCapacityPreview(); }));
+  ['grid-count','size-base','leverage'].forEach(id => P(id).addEventListener('change', () => { if (prefix === 'de') applyPopdexCapacityPreview(); else sizeByBalance(); }));
+  if(prefix==='de') setTimeout(()=>applyPopdexCapacityPreview(),0);
 
   P('start-btn').onclick = async () => {
     const lower = +P('lower').value, upper = +P('upper').value, market = String(P('market').value || 'BTCUSDT');
     const agentPrivateKey=String(document.getElementById('de-agent-private-key')?.value||'').trim();
     const mainAccount=String(document.getElementById('de-main-account')?.value||popdexWalletAddress||'').trim();
+    const savedAgentReady=prefix==='de'&&!!lastState?.settings?.agentKeyConfigured&&!!lastState?.settings?.mainAccount;
     const body = {mode:'live',symbol:market,agentPrivateKey,mainAccount, gridMode:selectedMode, lower, upper, gridCount:+P('grid-count').value, sizeBase:+P('size-base').value, leverage:+P('leverage').value, apiCategory:'Futures'};
-    if (!agentPrivateKey || !mainAccount) { alert('请填写 Agent 私钥和主账户地址，或先连接钱包读取主账户地址。'); return; }
+    if ((!agentPrivateKey || !mainAccount) && !savedAgentReady) { alert('请填写 Agent 私钥和主账户地址，或先连接钱包读取主账户地址。'); return; }
+    if(savedAgentReady&&!agentPrivateKey){delete body.agentPrivateKey; if(!mainAccount)delete body.mainAccount;}
     const r = await fetch('/api/start', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const j=await r.json(); if(j.error) alert('实盘启动失败：'+j.error);
   };
 
@@ -1286,13 +1380,43 @@ function makeExchangeCtrl(prefix, chartId) {
     if (j.error) alert('停止失败：' + j.error);
   };
 
+  let capacityPreviewBusy=false;
+  async function applyPopdexCapacityPreview({notify=false}={}) {
+    if (prefix !== 'de' || capacityPreviewBusy) return null;
+    const gridCount=+P('grid-count').value, sizeBase=+P('size-base').value, leverage=+P('leverage').value;
+    if (!(Number.isInteger(gridCount) && gridCount>=2 && sizeBase>0 && leverage>0)) return null;
+    capacityPreviewBusy=true;
+    try {
+      const r=await fetch('/api/capacity-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({gridCount,sizeBase,leverage})});
+      const j=await r.json(); if(!r.ok||j.error) throw Error(j.error||`HTTP ${r.status}`);
+      const capacityEl=P('capacity-preview');
+      if (j.maxSizePerGrid && j.maxSizePerGrid>0 && sizeBase>j.maxSizePerGrid) {
+        // Current open-grid quantity is evidence of the previous grid shape, not an
+        // authoritative account/risk ceiling. Never silently rewrite a new start's size.
+        const msg=`当前运行网格的历史形态为 ${gridCount} 格 × ${j.maxSizePerGrid} BTC；你本次填写的 ${sizeBase} BTC 已保留，未被自动改写。`;
+        if(capacityEl) capacityEl.innerHTML=`<span class="down">${msg}</span><br><span class="muted">当前官方策略 ${j.observedStrategyOrders} 单 / ${j.observedStrategyQty} BTC · 官方数量步长 ${j.lotSize} BTC。旧网格总量不是账户风险上限，不能据此把新网格数量强行降到 ${j.maxSizePerGrid}；最终以交易所实盘风控回执为准。</span>`;
+        if(notify) alert(msg+' 将按你填写的数量提交；若交易所拒绝，原子回滚会恢复旧网格。');
+      } else if(capacityEl) {
+        capacityEl.innerHTML=`<span class="up">官方容量预检通过：${gridCount} 格 × ${sizeBase} BTC。</span><br><span class="muted">当前官方策略 ${j.observedStrategyOrders} 单 / ${j.observedStrategyQty} BTC · 官方步长 ${j.lotSize} BTC · 以当前总量估算每格最多 ${j.maxSizePerGrid??'—'} BTC。仅为预检，尚未提交调整或订单。</span>`;
+      }
+      return j;
+    } catch(e) { const capacityEl=P('capacity-preview'); if(capacityEl) capacityEl.innerHTML=`<span class="down">官方容量预检读取失败：${e.message}；未调整数量，也未提交订单。</span>`; if(notify) alert('容量预检读取失败：'+e.message+'；未执行调整。'); return null; }
+    finally { capacityPreviewBusy=false; }
+  }
+
   P('adjust-btn').onclick = async () => {
     const lower = +P('lower').value, upper = +P('upper').value;
     if (!(upper > lower)) { alert('请先填写有效的上/下边界'); return; }
-    if (!confirm(`确认将运行中的网格区间调整为 [${lower}, ${upper}]？\n会撤销现有挂单并按新区间重新挂单（持仓保留、网格不停止）。`)) return;
-    const r = await fetch(`/api/${prefix}/adjust`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ lower, upper }) });
-    const j = await r.json();
-    if (j.error) alert('调整失败：' + j.error);
+    const gridCount=+P('grid-count').value, sizeBase=+P('size-base').value, leverage=+P('leverage').value;
+    if (!(Number.isInteger(gridCount) && gridCount >= 2 && sizeBase > 0 && leverage > 0)) { alert('网格数量须至少 2；每格数量和杠杆必须大于 0'); return; }
+    const endpoint = prefix === 'de' ? '/api/adjust' : `/api/${prefix}/adjust`;
+    const capacity=await applyPopdexCapacityPreview({notify:true});
+    if (!capacity) return;
+    const adjustedSize=+P('size-base').value;
+    if (!confirm(`确认将运行中的网格调整为 [${lower}, ${upper}]，${gridCount} 格，每格 ${adjustedSize} BTC，${leverage}x？\n已先按当前官方策略容量预检；会撤销当前策略挂单并按新参数重建，持仓保留。`)) return;
+    const r = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ lower, upper, gridCount, sizeBase:adjustedSize, leverage }) });
+    const j = await r.json().catch(()=>({error:`HTTP ${r.status}：服务返回无效响应`}));
+    if (!r.ok || j.error) alert('调整失败：' + (j.error || `HTTP ${r.status}`));
   };
 
   P('reset-btn').onclick = async () => {
@@ -1305,7 +1429,7 @@ function makeExchangeCtrl(prefix, chartId) {
   if (P('reconnect-btn')) P('reconnect-btn').onclick = () => reconnectEx(prefix, P('reconnect-btn'));
 
   P('cancel-orders-btn').onclick = async () => {
-    if (!confirm('确认一键撤销该交易所的全部挂单？\n持仓不受影响（不会平仓）。网格将停止，需要时可重新启动。')) return;
+    if (!confirm('确认撤销当前策略的官方挂单？\n只撤销 clientOid 为 grid-* 的策略订单；不会触及手工/外部订单，不会平仓。\n撤单后网格会暂停，避免它立刻自动补回刚撤的订单；以后重新启动网格无需再次链上授权。')) return;
     const endpoint = prefix === 'de' ? '/api/cancel-orders' : `/api/${prefix}/cancel-orders`;
     const r = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
     const j = await r.json();
@@ -1369,17 +1493,21 @@ function makeExchangeCtrl(prefix, chartId) {
     P('start-btn').disabled = run;
     P('stop-btn').disabled = false;
     if (P('adjust-btn')) P('adjust-btn').disabled = !run;
+    if (P('cancel-orders-btn')) P('cancel-orders-btn').disabled = !run;
+    if(prefix==='de' && $('popdex-wallet-status')) { const configured=!!s.settings?.agentKeyConfigured&&!!s.settings?.mainAccount; if(configured && !popdexWalletAddress) { $('popdex-wallet-status').textContent='本地 Agent 已配置；重新启动网格无需再次链上授权。连接钱包仅用于更换主账户或重新授权。'; $('popdex-wallet-status').className='up'; } }
     P('st-run').innerHTML = run ? `<span class="badge badge-run">运行中（${modeLabel(s.config?.mode)}）</span>` : '<span class="badge badge-stop">未运行</span>';
     P('st-price').textContent = s.lastPrice ?? '—';
     P('st-bal').textContent = s.balance == null ? '—' : Number(s.balance).toFixed(2);
     P('st-eq').textContent = s.equity == null ? '—' : Number(s.equity).toFixed(2);
 
     if (s.position) {
-      const long = s.position.sizeBase > 0;
-      const levTxt = s.position.leverage ? ` <span class="muted">@${s.position.leverage}x</span>` : '';
-      P('st-pos').innerHTML = `<span class="${long?'up':'down'}">${long?'多':'空'} ${Math.abs(Number(s.position.sizeBase)).toFixed(3)}</span>${levTxt}`;
-      P('st-entry').textContent = s.position.entryPrice == null ? '—' : Number(s.position.entryPrice).toFixed(3);
-      P('st-upnl').innerHTML = s.position.unrealizedPnl == null ? '—' : `<span class="${cls(s.position.unrealizedPnl)}">${signed(s.position.unrealizedPnl, 3)}</span>`;
+      const official = (s.account?.positions || []).find(p => String(p.symbol||'').toUpperCase() === String(s.symbol||'').toUpperCase() && Math.abs(Number(p.size||0)) > 0);
+      const displayPosition = official ? { ...s.position, sizeBase: (String(official.side||'').toLowerCase().includes('short') || String(official.side||'').toLowerCase()==='sell' ? -1 : 1) * Math.abs(Number(official.size)), entryPrice: Number(official.entry), unrealizedPnl: Number(official.pnl), source: 'popdex-official-account' } : s.position;
+      const long = displayPosition.sizeBase > 0;
+      const levTxt = displayPosition.leverage ? ` <span class="muted">@${displayPosition.leverage}x</span>` : '';
+      P('st-pos').innerHTML = `<span class="${long?'up':'down'}">${long?'多':'空'} ${Math.abs(Number(displayPosition.sizeBase)).toFixed(3)}</span>${levTxt}`;
+      P('st-entry').textContent = displayPosition.entryPrice == null ? '—' : Number(displayPosition.entryPrice).toFixed(3);
+      P('st-upnl').innerHTML = displayPosition.unrealizedPnl == null ? '—' : `<span class="${cls(displayPosition.unrealizedPnl)}">${signed(displayPosition.unrealizedPnl, 3)}</span>`;
     } else {
       P('st-pos').textContent = '无持仓';
       P('st-entry').textContent = '—';
@@ -1515,8 +1643,185 @@ setInterval(refreshPopDEXDailyVolume, 30000);
 let lastBeat = 0;
 let lastOverview = {};
 const ovEs = null;
-async function refreshPopdexOverview(){try{const s=await (await fetch('/api/state',{cache:'no-store'})).json();lastBeat=Date.now();lastOverview={de:{health:{status:s.error?'error':s.running?'ok':'idle',reason:s.error?('错误：'+s.error):s.running?'运行中':'未运行'}}};const view={...s,balance:s.account?.availableBalance ?? s.balance,equity:s.account?.equity ?? s.equity,volume:s.account?.volume ?? s.stats?.volume};deCtrl.render(view);const d={...view,mode:s.settings?.mode||'paper',lastPrice:s.lastPrice,config:s.config,health:lastOverview.de.health};renderOverview({de:d});const logEl=$('de-alerts');if(logEl){const rows=[];if(s.error)rows.push(`<div class="log-item" style="color:#fca5a5"><b>❌ 错误：</b>${String(s.error).replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]))}</div>`);(s.log||[]).slice(0,30).forEach(x=>rows.push(`<div class="log-item"><span class="muted">${new Date(x.time).toLocaleTimeString()}</span> ${String(x.message||'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]))}</div>`));logEl.innerHTML=rows.join('')||'<div class="log-item muted">暂无日志</div>'}}catch(e){console.error('PopDEX overview refresh failed:',e);updateConnStatus()}}
-refreshPopdexOverview();setInterval(refreshPopdexOverview,1500);
+async function refreshPopdexOverview(){try{const s=await (await fetch('/api/state',{cache:'no-store'})).json();lastBeat=Date.now();lastOverview={de:{health:{status:s.error?'error':s.running?'ok':'idle',reason:s.error?('错误：'+s.error):s.running?'运行中':'未运行'}}};const account=s.account||{},up=Number(account.unrealizedPnl??s.unrealizedPnl);const hasUp=Number.isFinite(up);const portfolio=Number(account.portfolioPnl);const hasPortfolio=Number.isFinite(portfolio);const authoritative=hasPortfolio?{totalPnl:portfolio,unrealizedPnl:hasUp?up:null,realizedPnl:hasUp?portfolio-up:null,pnlSource:account.portfolioPnlSource||'PopDEX Account Equity History'}:{totalPnl:s.totalPnl,realizedPnl:s.realizedPnl,unrealizedPnl:s.unrealizedPnl,pnlSource:'fallback'};const view={...s,...authoritative,balance:account.availableBalance ?? s.balance,equity:account.equity ?? s.equity,volume:account.volume ?? s.stats?.volume,completedRungs:s.stats?.completedRungs ?? 0};deCtrl.render(view);const d={...view,mode:s.settings?.mode||'paper',lastPrice:s.lastPrice,config:s.config,health:lastOverview.de.health};renderOverview({de:d});const logEl=$('de-alerts');if(logEl){const rows=[];if(s.error)rows.push(`<div class="log-item" style="color:#fca5a5"><b>❌ 错误：</b>${String(s.error).replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]))}</div>`);(s.log||[]).slice(0,30).forEach(x=>rows.push(`<div class="log-item"><span class="muted">${new Date(x.time).toLocaleTimeString()}</span> ${String(x.message||'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]))}</div>`));logEl.innerHTML=rows.join('')||'<div class="log-item muted">暂无日志</div>'}}catch(e){console.error('PopDEX overview refresh failed:',e);updateConnStatus()}}
+async function loadOndoMarkets(){const sel=$('ondo-market');if(!sel)return;try{const d=await (await fetch('/api/ondo/markets',{cache:'no-store'})).json(),rows=d.markets||[];if(!d.ok||!rows.length)return;const old=sel.value||'BTC-USD.P';sel.innerHTML=rows.map(x=>`<option value="${String(x.market).replace(/"/g,'&quot;')}">${String(x.displayName||x.market).replace(/[&<>]/g,'')} · ${String(x.longName||'').replace(/[&<>]/g,'')}</option>`).join('');window.ondoMarkets=rows;sel.value=rows.some(x=>x.market===old)?old:(rows[0]?.market||'BTC-USD.P');window.ondoTakerFee=Number(rows.find(x=>x.market===sel.value)?.takerFee||0.00035);refreshOndoCandles()}catch(e){const w=$('ondo-range-warn');if(w)w.textContent='市场列表加载失败：'+e.message}}
+function localOndoTrend(rows){const vals=rows.map(x=>Number(x.close)).filter(Number.isFinite);if(vals.length<20)return {tag:'数据不足',detail:'至少需要20根有效K线后进行趋势分析。',direction:'neutral',strength:0};const n=vals.length,avg=k=>vals.slice(-k).reduce((a,b)=>a+b,0)/Math.min(k,n),fast=avg(Math.min(20,n)),slow=avg(Math.min(50,n)),ret=(vals[n-1]/vals[Math.max(0,n-20)]-1)*100,dir=fast>slow*1.001?'偏多':fast<slow*.999?'偏空':'震荡',strength=Math.min(100,Math.round(Math.abs(ret)*20+Math.abs(fast/slow-1)*10000));return {tag:dir,detail:`当前周期：${dir} · 近20根变化 ${ret>=0?'+':''}${ret.toFixed(2)}% · 强度 ${strength}%`,direction:dir==='偏多'?'long':dir==='偏空'?'short':'neutral',strength}}
+function trendLabel(t){return t==='up'?'偏多':t==='down'?'偏空':'震荡'}
+function renderOndoTrend(analysis){if(!analysis)return;const frames=analysis.frames||[],by=i=>frames[i]||{},strength=Math.round(Number(analysis.strength||0)*100),detail=`15m ${trendLabel(by(0).trend)} ${Math.round(Number(by(0).strength||0)*100)}% ｜ 1h ${trendLabel(by(1).trend)} ${Math.round(Number(by(1).strength||0)*100)}% ｜ 4h ${trendLabel(by(2).trend)} ${Math.round(Number(by(2).strength||0)*100)}% · 综合 ${trendLabel(analysis.trend)} ${strength}% · RSI ${Number(by(0).rsi||0).toFixed(1)}`;for(const id of ['ov-ondo-trend','ondo-rec-detail']){const el=$(id);if(el){el.textContent=id==='ov-ondo-trend'?`趋势监测：${detail}`:detail;el.className=(id==='ov-ondo-trend'?'trend-box ':'')+(analysis.trend==='up'?'trend-up':analysis.trend==='down'?'trend-down':'trend-idle')}}const tag=$('ondo-rec-tag');if(tag)tag.textContent=trendLabel(analysis.trend);window.ondoTrendAnalysis=analysis}
+async function refreshOndoTrend(){const market=$('ondo-market')?.value||'BTC-USD.P';try{const d=await (await fetch(`/api/ondo/trend?market=${encodeURIComponent(market)}`,{cache:'no-store'})).json();if(!d.ok)throw Error(d.error||'趋势读取失败');renderOndoTrend(d.analysis)}catch(e){const trend=$('ov-ondo-trend');if(trend)trend.textContent=`趋势监测读取失败：${e.message}`;}}
+
+function applyOndoRecommendation(){const market=$('ondo-market')?.value||'BTC-USD.P',interval=$('ondo-interval')?.value||'1h',tag=$('ondo-rec-tag')?.textContent||'',rows=window.ondoCandles||[];if(rows.length<20){alert('K线数据尚未加载完成，暂时无法生成推荐区间');return}const vals=rows.map(x=>Number(x.close)).filter(Number.isFinite),last=vals.at(-1),min=Math.min(...vals),max=Math.max(...vals),pad=(max-min)*0.12||last*.01;let mode='neutral';if(tag.includes('偏多'))mode='long';else if(tag.includes('偏空'))mode='short';$('ondo-lower').value=Math.max(0,min-pad).toFixed(2);$('ondo-upper').value=(max+pad).toFixed(2);document.querySelectorAll('#ondo-modes .mode-btn').forEach(x=>x.classList.toggle('sel',x.dataset.mode===mode));if($('ondo-risk-preview'))$('ondo-risk-preview').textContent=`已采用 ${market} ${interval} 推荐：${mode==='long'?'做多':mode==='short'?'做空':'中性'} · 自动区间 ${$('ondo-lower').value} ~ ${$('ondo-upper').value}；仅填入配置，尚未启动交易。`;}
+function updateOndoDraftPreview(){
+  const lower=Number($('ondo-lower')?.value),upper=Number($('ondo-upper')?.value),size=Number($('ondo-size')?.value),n=Number($('ondo-grid-count')?.value),lev=Number($('ondo-leverage')?.value);
+  const mid=lower>0&&upper>lower?(lower+upper)/2:Number(window.ondoLastPrice||0),fee=Number(window.ondoTakerFee||0.00035);
+  if(!(mid>0&&upper>lower&&size>0&&n>=2&&lev>=1))return;
+  const mi=window.ondoMarkets?.find(x=>x.market===$('ondo-market')?.value)||{},step=Number(mi.baseIncrement||0),executable=step>0?Math.floor((size+1e-12)/step)*step:size,precisionInvalid=step>0&&Math.abs(size-executable)>Math.max(step*1e-8,1e-12),spacing=(upper-lower)/n,totalMargin=n*executable*mid/lev,roundTripFee=2*executable*mid*fee,grossProfit=spacing*executable,netProfit=grossProfit-roundTripFee;
+  if($('ondo-margin-preview'))$('ondo-margin-preview').innerHTML=`草稿总保证金需求：<b>${totalMargin.toFixed(2)} U</b>（${n} 格 × 每格名义 ${(executable*mid).toFixed(2)} U ÷ ${lev}x）<br><small>${precisionInvalid?`⚠️ 输入 ${size} BTC 不符合最小单位 ${step} BTC；以下仅按可执行的 ${executable.toFixed(4)} BTC 估算，不能直接重建。`:'仅按当前填写的下一轮参数估算；不会修改运行中的网格。'}</small>`;
+  if($('ondo-fee-preview'))$('ondo-fee-preview').innerHTML=`每格毛利润：<b>${grossProfit.toFixed(4)} U</b> · 往返手续费：<b>${roundTripFee.toFixed(4)} U</b> · 每格净利润：<b class="${netProfit>0?'profit':'loss'}">${netProfit.toFixed(4)} U</b><br><small>按 ${Math.round(fee*10000)} bp/边估算；${precisionInvalid?`⚠️ 请改为 ${executable.toFixed(4)} BTC 或 ${(executable+step).toFixed(4)} BTC 后再重建。`:'未计资金费、滑点与未成交风险。'}</small>`;
+}
+async function recalcOndoSize(){
+  const lower=Number($('ondo-lower')?.value),upper=Number($('ondo-upper')?.value),mid=lower>0&&upper>lower?(lower+upper)/2:Number(window.ondoLastPrice||0),n=Math.max(2,Number($('ondo-grid-count')?.value)||12),lev=Math.max(1,Number($('ondo-leverage')?.value)||5);
+  if(!mid||!$('ondo-size'))return;
+  let bal=Number(window.ondoBalance||0);if(!bal){try{const q=await (await fetch('/api/ondo/overview',{cache:'no-store'})).json(),b=q.ondo?.balance||{};bal=Number(b.marginBalance??b.walletBalance??b.availableMargin??0);window.ondoBalance=bal}catch{}}
+  // Live strategy must never have its size overwritten, but its editable next-round draft
+  // still needs the margin/profit preview recalculated below.
+  if(!window.ondoGridRunning&&bal>0&&!window.ondoSizeManual)$('ondo-size').value=(bal*lev*.4/n/mid).toFixed(8);
+  updateOndoDraftPreview();
+}
+async function refreshOndoCandles(){const market=$('ondo-market')?.value||'BTC-USD.P',interval=$('ondo-interval')?.value||'1h',warn=$('ondo-range-warn');try{if(warn)warn.textContent='正在加载 Ondo 真实 K线…';const d=await (await fetch(`/api/ondo/candles?market=${encodeURIComponent(market)}&interval=${encodeURIComponent(interval)}&limit=120`,{cache:'no-store'})).json(),rows=d.candles||[];if(!d.ok||!rows.length){if(warn)warn.textContent=d.error||'暂无 K线数据';return}const trend=localOndoTrend(rows);window.ondoCandles=rows;window.ondoLastPrice=Number(rows.at(-1)?.close||0);if(window.ondoLastPrice>0&&(!$('ondo-lower')?.value||!$('ondo-upper')?.value)){const p=window.ondoLastPrice,lo=p*.97,hi=p*1.03;if($('ondo-lower'))$('ondo-lower').value=lo.toFixed(2);if($('ondo-upper'))$('ondo-upper').value=hi.toFixed(2);if(warn)warn.textContent=`${d.market} · ${d.interval} · ${rows.length} 根 · 已自动填充 ±3% 网格区间`;}$('ondo-rec-tag')&&($('ondo-rec-tag').textContent=trend.tag);if($('ondo-rec-detail'))$('ondo-rec-detail').textContent=trend.detail;if(warn)warn.textContent=`${d.market} · ${d.interval} · ${rows.length} 根`;await recalcOndoSize();const c=$('ondo-chart');if(!c||typeof Chart==='undefined')return;if(window.ondoChart)window.ondoChart.destroy();const gridOrders=(window.ondoOpenOrders||[]).filter(o=>o.status==='open'&&String(o.clientOrderId||'').startsWith('hermes_')&&o.market===market),gridPrices=gridOrders.map(o=>Number(o.price)).filter(Number.isFinite),gridMin=Math.min(...gridPrices),gridMax=Math.max(...gridPrices);window.ondoChart=new Chart(c,{type:'line',data:{labels:rows.map(x=>new Date(x.time*1000).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})),datasets:[{label:`${d.market} 收盘价`,data:rows.map(x=>x.close),borderColor:'#fbbf24',backgroundColor:'rgba(251,191,36,.12)',fill:true,pointRadius:0,tension:.15}]},plugins:[{id:'ondoGridOrders',afterDraw(chart){if(!gridPrices.length)return;const {ctx,chartArea:{left,right},scales:{y}}=chart;ctx.save();gridPrices.forEach((price,i)=>{const py=y.getPixelForValue(price);if(py<y.top||py>y.bottom)return;const sell=price>window.ondoLastPrice;ctx.strokeStyle=sell?'rgba(251,113,133,.55)':'rgba(52,211,153,.55)';ctx.lineWidth=i%5===0?1.2:.65;ctx.setLineDash(i%5===0?[5,4]:[2,4]);ctx.beginPath();ctx.moveTo(left,py);ctx.lineTo(right,py);ctx.stroke()});ctx.setLineDash([]);ctx.fillStyle='#cbd5e1';ctx.font='11px system-ui';ctx.fillText(`策略挂单 ${gridPrices.length} 单｜绿=买入 红=卖出`,left+8,y.top+16);ctx.restore()}}],options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#cbd5e1'}},tooltip:{callbacks:{afterLabel:()=>gridPrices.length?`网格范围 ${gridMin.toFixed(0)} ~ ${gridMax.toFixed(0)}（${gridPrices.length} 单）`:''}}},scales:{x:{ticks:{color:'#94a3b8',maxTicksLimit:8},grid:{color:'rgba(148,163,184,.1)'}},y:{min:gridPrices.length?gridMin-(gridMax-gridMin)*.035:undefined,max:gridPrices.length?gridMax+(gridMax-gridMin)*.035:undefined,ticks:{color:'#94a3b8'},grid:{color:'rgba(148,163,184,.1)'}}}}})}catch(e){if(warn)warn.textContent='K线加载失败：'+e.message}}
+async function refreshOndoConnection(btn){if(btn){btn.disabled=true;btn.textContent='⟳ 读取中…'}try{await refreshOndoOverview();await refreshOndoCandles();}finally{if(btn){btn.disabled=false;btn.textContent='🔌 重连 Ondo API（只读）'}}}
+async function refreshOndoOverview(){
+  try{
+    const d=await (await fetch('/api/ondo/overview',{cache:'no-store'})).json(),o=d.ondo||{};
+    window.ondoOpenOrders=o.orders||[];
+    const p=o.positions||[],b=o.balance||{},live=o.live||{},orders=o.orders||[];
+    // 本地持久化的策略 orderId/clientOrderId 是当前网格唯一边界；不能用时间戳
+    // 猜“最新批次”，否则补单有不同创建时间时会在 UI 中被切到另一批。
+    const managedIds=new Set((live.orders||[]).map(x=>String(x.orderId||x.clientOrderId||'')).filter(Boolean));
+    const strategyOrders=orders.filter(x=>managedIds.has(String(x.orderId||x.clientOrderId||'')));
+    const open=strategyOrders.filter(x=>x.status==='open');
+    const activeBatch=String(live.config?.batchId||'');
+    const activeOrders=strategyOrders;
+    const historicalOrders=(live.history||[]).flatMap(batch=>batch.orders||[]);
+    const reportingOrders=[...historicalOrders,...activeOrders];
+    // 图表只画当前策略快照中的官方开放单，避免历史 hermes 订单污染网格线。
+    window.ondoOpenOrders=strategyOrders;
+    const filled=reportingOrders.filter(x=>Number(x.filledSize||0)>0);
+    const tradeVolume=filled.reduce((sum,x)=>sum+Math.abs(Number(x.filledSize||0)*Number(x.price||0)),0);
+    const todayKey=new Date().toISOString().slice(0,10);
+    const todayVolume=filled.filter(x=>String(x.createdAt||'').slice(0,10)===todayKey).reduce((sum,x)=>sum+Math.abs(Number(x.filledSize||0)*Number(x.price||0)),0);
+    const buyFilled=filled.filter(x=>String(x.side).toLowerCase()==='buy').reduce((sum,x)=>sum+Number(x.filledSize||0),0);
+    const sellFilled=filled.filter(x=>String(x.side).toLowerCase()==='sell').reduce((sum,x)=>sum+Number(x.filledSize||0),0);
+    const gridSize=Number(live.config?.size||activeOrders[0]?.size||0);
+    const completedGrids=gridSize>0?Math.floor((Math.min(buyFilled,sellFilled)+1e-12)/gridSize):0;
+    const cfg=live.config||{},configured=!!o.configured,running=!!live.running||open.length>0;
+    window.ondoGridRunning=running;
+    // 运行中时控制面板必须回显真实执行参数，不能继续显示 localStorage 的旧草稿（例如 12 格）。
+    if(running&&cfg.gridCount){
+      const editing=['ondo-lower','ondo-upper','ondo-grid-count','ondo-size','ondo-leverage','ondo-out-range'].includes(document.activeElement?.id);
+      // Don't overwrite a user typing a next-round draft every five seconds. The live config
+      // remains visible in the summary directly below and becomes the initial form value on load.
+      if(!editing&&!window.ondoDraftDirty){
+      if($('ondo-lower'))$('ondo-lower').value=Number(cfg.lower).toFixed(2);
+      if($('ondo-upper'))$('ondo-upper').value=Number(cfg.upper).toFixed(2);
+      if($('ondo-grid-count'))$('ondo-grid-count').value=String(cfg.gridCount);
+      if($('ondo-size'))$('ondo-size').value=Number(cfg.size).toFixed(8);
+      if($('ondo-leverage'))$('ondo-leverage').value=String(cfg.leverage);
+      if($('ondo-out-range'))$('ondo-out-range').value=cfg.outRange||'pause';
+      document.querySelectorAll('#ondo-modes .mode-btn').forEach(x=>x.classList.toggle('sel',x.dataset.mode===(cfg.mode||'neutral')));
+      }
+      // 运行中保留实际参数作为默认值，但允许编辑“下一轮调整草稿”。只有点击调整按钮
+      // 后才会定向撤当前策略单、官方确认撤完、再按这些字段重新挂网格。
+      for(const id of ['ondo-lower','ondo-upper','ondo-grid-count','ondo-size','ondo-leverage']){const el=$(id);if(el){el.readOnly=false;el.disabled=false;el.title='可编辑下一轮网格参数；点击“调整区间并重建”后才会撤当前策略挂单并按此值重建。';}}
+      if($('ondo-out-range')){$('ondo-out-range').disabled=false;$('ondo-out-range').title='可编辑下一轮调整参数。'}
+      if($('ondo-risk-preview'))$('ondo-risk-preview').textContent=`当前实盘：${cfg.gridCount} 格 · 每格 ${Number(cfg.size).toFixed(4)} BTC · ${cfg.leverage}x。你可先编辑下一轮参数；点击“调整区间并重建”才会定向撤当前策略挂单、确认完成后按新参数重建。`;
+    }
+    const position=p.find(x=>Math.abs(Number(x.netQuantity??x.size??0))>0)||p[0]||null;
+    const up=Number(b.unrealizedPnl??position?.unrealizedPnl??0),market=cfg.market||open[0]?.market||position?.market||$('ondo-market')?.value||'—';
+    // 最新价优先官方仓位 markPrice；K 线尚未返回时也不能留空。
+    const px=Number(o.referencePrice??o.lastPrice??o.price??position?.markPrice??window.ondoLastPrice??0);
+    window.ondoBalance=Number(b.marginBalance??b.walletBalance??b.availableMargin??0);
+    const startBtn=$('ondo-start-btn'),stop=$('ondo-stop-btn');
+    if(startBtn){startBtn.disabled=running;startBtn.classList.toggle('disabled',running);startBtn.textContent=running?'Ondo 网格运行中':'启动 Ondo 实盘网格';}
+    if(stop)stop.disabled=!running;
+    const fields={
+      'ov-ondo-health':configured?(running?'网格运行中':'已连接（未启动）'):'未配置新 API Key',
+      'ov-ondo-bal':b.availableMargin??b.marginBalance??b.walletBalance??'—',
+      'ov-ondo-eq':b.marginBalance??b.equity??b.walletBalance??'—',
+      'ov-ondo-vol':filled.length?fmt(tradeVolume):'0.00',
+      'ov-ondo-vol-today':filled.length?fmt(todayVolume):'0.00',
+      'ov-ondo-vol-yesterday':'官方日统计不可用',
+      'ov-ondo-rungs':`${completedGrids} 格（累计完成格，含已调整历史批次）`,
+      'ov-ondo-price':px>0?fmt(px):'—',
+      'ov-ondo-mkt':market,
+      'ondo-console-health':configured?(running?'网格运行中':'已连接（未启动）'):'未配置新 API Key',
+      'ondo-console-price':px>0?fmt(px):'—',
+      'ondo-console-bal':b.availableMargin??b.marginBalance??b.walletBalance??'—',
+      'ondo-console-equity':b.marginBalance??b.equity??b.walletBalance??'—',
+      'ondo-console-upnl':p.length?fmt(up):'—',
+      'ondo-console-pos-count':position?`${Number(position.netQuantity??position.size??0)>0?'多':'空'} ${Math.abs(Number(position.netQuantity??position.size??0)).toFixed(4)}`:'无持仓',
+      'ondo-console-entry':position?.averageEntryPrice??position?.entryPrice??'—',
+      'ondo-console-rpnl':b.realizedPnl!=null?signed(Number(b.realizedPnl)):'—',
+      'ondo-console-funding':b.totalFundingPayments!=null?signed(Number(b.totalFundingPayments)):'—',
+      'ondo-console-fees':b.totalTradingFees!=null?`-${Math.abs(Number(b.totalTradingFees)).toFixed(2)}`:'—',
+      'ondo-console-total':b.totalPnL!=null?`${signed(Number(b.totalPnL))} / ${b.netInvested!=null&&Number(b.netInvested)!==0?`${(Number(b.totalPnL)/Number(b.netInvested)*100>=0?'+':'')}${(Number(b.totalPnL)/Number(b.netInvested)*100).toFixed(2)}%`:'—'}`:'—',
+      'ondo-console-order-count':`${open.length} 单 / ${completedGrids} 格（累计，含已调整批次）`
+    };
+    for(const [id,val] of Object.entries(fields))if($(id))$(id).textContent=val;
+    const rpnl=Number(b.realizedPnl),hasRpnl=Number.isFinite(rpnl);
+    if($('ov-ondo-rpnl'))$('ov-ondo-rpnl').innerHTML=hasRpnl?`<span class="${cls(rpnl)}">${signed(rpnl)}</span>`:'—';
+    const ovHasUpnl=p.length>0&&Number.isFinite(up);
+    if($('ov-ondo-upnl'))$('ov-ondo-upnl').innerHTML=ovHasUpnl?`<span class="${cls(up)}">${signed(up)}</span>`:'—';
+    const funding=Number(b.totalFundingPayments),fees=Number(b.totalTradingFees),hasFunding=Number.isFinite(funding),hasFees=Number.isFinite(fees);
+    if($('ov-ondo-funding'))$('ov-ondo-funding').innerHTML=hasFunding?`<span class="${cls(funding)}">${signed(funding)}</span>`:'—';
+    if($('ov-ondo-fees'))$('ov-ondo-fees').innerHTML=hasFees?`<span class="${cls(-Math.abs(fees))}">-${Math.abs(fees).toFixed(2)}</span>`:'—';
+    const totalPnl=Number(b.totalPnL),netInvested=Number(b.netInvested),hasTotalPnl=Number.isFinite(totalPnl),totalReturn=netInvested?totalPnl/netInvested*100:NaN;
+    if($('ov-ondo-pnl'))$('ov-ondo-pnl').innerHTML=hasTotalPnl?`<span class="${cls(totalPnl)}">${signed(totalPnl)}</span>`:'—';
+    if($('ov-ondo-ret'))$('ov-ondo-ret').textContent=hasTotalPnl?`官方净盈亏（已实现 + 未实现 + 资金费 − 手续费）${Number.isFinite(totalReturn)?` · ${totalReturn>=0?'+':''}${totalReturn.toFixed(2)}%`:''}`:(running?`官方回读 · ${open.length} 个真实网格挂单`:'官方账户回读');
+    if($('ov-ondo-pnl'))$('ov-ondo-pnl').title=hasTotalPnl&&hasRpnl&&ovHasUpnl&&hasFunding&&hasFees?`官方公式：${signed(rpnl)} 已实现 + ${signed(up)} 未实现 + ${signed(funding)} 资金费 − ${Math.abs(fees).toFixed(4)} 手续费 = ${signed(totalPnl)} U`:'Ondo 官方账户 totalPnL';
+    const hasUpnl=!!position&&Number.isFinite(up);
+    if($('ondo-console-upnl'))$('ondo-console-upnl').innerHTML=hasUpnl?`<span class="${cls(up)}">${signed(up)}</span>`:'—';
+    const consoleRpnl=Number(b.realizedPnl);
+    if($('ondo-console-rpnl'))$('ondo-console-rpnl').innerHTML=Number.isFinite(consoleRpnl)?`<span class="${cls(consoleRpnl)}">${signed(consoleRpnl)}</span>`:'—';
+    if($('ondo-console-funding'))$('ondo-console-funding').innerHTML=hasFunding?`<span class="${cls(funding)}">${signed(funding)}</span>`:'—';
+    if($('ondo-console-fees'))$('ondo-console-fees').innerHTML=hasFees?`<span class="${cls(-Math.abs(fees))}">-${Math.abs(fees).toFixed(2)}</span>`:'—';
+    const consoleTotal=Number(b.totalPnL),consoleInvested=Number(b.netInvested),consoleRet=consoleInvested?consoleTotal/consoleInvested*100:NaN;
+    if($('ondo-console-total'))$('ondo-console-total').innerHTML=Number.isFinite(consoleTotal)?`<span class="${cls(consoleTotal)}">${signed(consoleTotal)}</span> <span class="muted">/ <span class="${cls(consoleRet)}">${Number.isFinite(consoleRet)?(consoleRet>=0?'+':'')+consoleRet.toFixed(2)+'%':'—'}</span></span>`:'—';
+    const fillRows=filled.slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).map(f=>{const t=f.updatedAt||f.createdAt;const dt=t?new Date(t):null;return `<tr><td>${dt&&!Number.isNaN(dt.getTime())?dt.toLocaleString('zh-CN',{hour12:false}):'—'}</td><td><span class="pill ${String(f.side).toLowerCase()==='buy'?'pill-buy':'pill-sell'}">${String(f.side).toLowerCase()==='buy'?'买':'卖'}</span></td><td>${fmt(Number(f.price),2)}</td><td>${Number(f.filledSize).toFixed(4)}</td></tr>`;}).join('');
+    if($('ondo-fills'))$('ondo-fills').innerHTML=fillRows||'<tr><td colspan="4" class="muted">本策略本轮暂无官方成交</td></tr>';
+    const logItems=[];
+    logItems.push({t:Date.now(),msg:`官方回读 · 当前批次 ${activeBatch||'—'} · 开放挂单 ${open.length} · 已成交 ${filled.length} · 完成 ${completedGrids} 格`});
+    if(live.last_action)logItems.push({t:live.updatedAt||live.startedAt||Date.now(),msg:`本地策略动作：${live.last_action==='started'?'已启动':live.last_action==='stopped'?'已停止':live.last_action==='partial_failed'?'部分提交失败':live.last_action}`});
+    for(const err of (live.errors||o.errors||[]))logItems.push({t:err?.at||Date.now(),msg:typeof err==='string'?err:JSON.stringify(err)});
+    if($('ondo-alerts'))$('ondo-alerts').innerHTML=logItems.map(x=>`<div class="log-item">${new Date(x.t).toLocaleTimeString('zh-CN',{hour12:false})} · ${x.msg}</div>`).join('')||'<div class="log-item muted">暂无日志</div>';
+    // Header total-PnL subtitle is set above from authoritative account balance fields.
+    if($('ov-ondo-ret')&&!hasTotalPnl)$('ov-ondo-ret').textContent=running?`官方回读 · ${open.length} 个真实网格挂单`:'官方账户回读';
+    if($('ov-ondo-detail')){
+      const detail=cfg.gridCount?`<div class="gc-title">本次启动参数（${cfg.mode==='long'?'做多':cfg.mode==='short'?'做空':'中性'}网格）</div>下边界 <b>${Number(cfg.lower).toFixed(2)}</b> · 上边界 <b>${Number(cfg.upper).toFixed(2)}</b><br>网格 <b>${cfg.gridCount}</b> 格 · 每格 <b>${Number(cfg.size).toFixed(4)}</b><br>杠杆 <b>${cfg.leverage}x</b> · 区间外策略 <b>${cfg.outRange==='close'?'冲破区间平仓':cfg.outRange==='reduce'?'只减仓回收阶梯':cfg.outRange||'—'}</b><br>官方策略挂单 <b>${open.length}</b>`:'';
+      $('ov-ondo-detail').innerHTML=detail;$('ov-ondo-detail').style.display=detail?'block':'none';
+    }
+    // 由与 PopDEX 相同的 EMA/动量/RSI 多周期模型渲染；失败时保留最近成功读数，绝不影响网格。
+    if(!window.ondoTrendAnalysis)refreshOndoTrend();
+    const badge=$('ov-ondo-badge'),dot=$('ov-ondo-dot'),hdr=$('hdr-ondo');
+    if(badge)badge.textContent=running?'NEW API · GRID RUNNING':configured?'NEW API · READY':'NEW API · ERROR';
+    if(dot)dot.className='run-dot '+(running?'on':'');
+    const headerDot=$('hdr-ondo-dot');
+    if(headerDot){headerDot.className='hdot '+(running?'ok':'error');headerDot.title=`ONDO：${running?'网格运行中':'网格未运行'}`;}
+    if(hdr){hdr.textContent=running?'ONDO: GRID ON':'ONDO: STOPPED';hdr.className='badge '+(running?'badge-real':'badge-paper');}
+    if($('ondo-console-errors'))$('ondo-console-errors').textContent=(live.errors||o.errors||[]).map(x=>typeof x==='string'?x:JSON.stringify(x)).join('；');
+    if(window.ondoChart)await refreshOndoCandles();
+  }catch(e){for(const id of ['ov-ondo-health','ondo-console-health'])if($(id))$(id).textContent='读取失败：'+e.message;}
+}
+async function ondoStartLive(){const cfg={market:$('ondo-market')?.value,mode:document.querySelector('#ondo-modes .mode-btn.sel')?.dataset.mode||'neutral',lower:Number($('ondo-lower')?.value),upper:Number($('ondo-upper')?.value),gridCount:Number($('ondo-grid-count')?.value),size:Number($('ondo-size')?.value),leverage:Number($('ondo-leverage')?.value),outRange:$('ondo-out-range')?.value||'pause'};if(!Number.isFinite(cfg.lower)||!Number.isFinite(cfg.upper)||!(cfg.upper>cfg.lower)||!(cfg.gridCount>=2)||!(cfg.size>0)||!(cfg.leverage>=1)){alert('请先填写有效的下边界、上边界、网格数量、每格数量和杠杆');return}if(!confirm(`确认启动 Ondo 实盘网格？\n交易对：${cfg.market}\n类型：${cfg.mode}\n区间：${cfg.lower} ~ ${cfg.upper}\n网格：${cfg.gridCount} 格\n每格：${cfg.size}\n杠杆：${cfg.leverage}x\n将真实提交限价订单。`))return;const b=$('ondo-start-btn');if(b){b.disabled=true;b.textContent='提交中…'}try{const r=await fetch('/api/ondo/live/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)}).then(x=>x.json());if(!r.ok){const failed=r.failedOrders?.[0]||{},detail=[failed.error,failed.error_code||r.error_code,failed.order?.price?`失败价 ${failed.order.price}`:'',r.addedOrders?.length?`本次已提交 ${r.addedOrders.length} 单并已回滚`:''].filter(Boolean).join(' · ');throw Error(`${r.error||'启动失败'}${detail?`\n原因：${detail}`:''}`)}if($('ondo-risk-preview'))$('ondo-risk-preview').textContent=`实盘已启动：成功提交 ${r.addedOrders?.length||0} 个限价网格订单，参考价 ${r.referencePrice}`;await refreshOndoOverview()}catch(e){alert('Ondo 启动失败：'+e.message)}finally{if(b){b.disabled=false;b.textContent='启动 Ondo 实盘网格'}}}
+async function ondoStopLive(){if(!confirm('确认停止 Ondo 网格并撤销该市场全部挂单？不会主动平仓。'))return;const b=$('ondo-stop-btn');if(b)b.disabled=true;try{const r=await fetch('/api/ondo/live/stop',{method:'POST'}).then(x=>x.json());if(!r.ok)throw Error(r.error||'停止失败');if($('ondo-risk-preview'))$('ondo-risk-preview').textContent='Ondo 网格已停止，已请求撤销策略市场挂单，不主动平仓。';await refreshOndoOverview()}catch(e){alert('Ondo 停止失败：'+e.message)}finally{if(b)b.disabled=false}}
+async function ondoCancelOrders(){const market=$('ondo-market')?.value;if(!market||!confirm(`确认撤销 Ondo ${market} 全部挂单？不会平仓。`))return;try{const r=await fetch('/api/ondo/live/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({market})}).then(x=>x.json());if(!r.ok)throw Error(r.error||'撤单失败');if($('ondo-risk-preview'))$('ondo-risk-preview').textContent=`已请求撤销 ${market} 全部挂单，不主动平仓。`;await refreshOndoOverview()}catch(e){alert('Ondo 撤单失败：'+e.message)}}
+async function ondoAdjustGrid(){
+  const cfg={market:$('ondo-market')?.value,mode:document.querySelector('#ondo-modes .mode-btn.sel')?.dataset.mode||'neutral',lower:Number($('ondo-lower')?.value),upper:Number($('ondo-upper')?.value),gridCount:Number($('ondo-grid-count')?.value),size:Number($('ondo-size')?.value),leverage:Number($('ondo-leverage')?.value),outRange:$('ondo-out-range')?.value||'pause'};
+  if(!cfg.market||!(cfg.upper>cfg.lower)||!(cfg.gridCount>=2)||!(cfg.size>0)||!(cfg.leverage>=1)){alert('请填写正确的交易对、上下边界、网格数量、每格数量和杠杆');return;}
+  if(!confirm(`确认按以下新参数调整 Ondo 实盘网格？\n交易对：${cfg.market}\n区间：${cfg.lower} ~ ${cfg.upper}\n网格：${cfg.gridCount} 格\n每格：${cfg.size} BTC\n杠杆：${cfg.leverage}x\n\n执行顺序：仅定向撤销当前策略的官方开放订单 → 官方确认已撤 → 按以上参数重新挂网格。不会主动平仓，也不会撤销其他订单。`))return;
+  const b=$('ondo-adjust-btn');if(b){b.disabled=true;b.textContent='定向撤单并重建中…'}
+  try{const r=await fetch('/api/ondo/live/adjust',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)}).then(x=>x.json());if(!r.ok)throw Error(r.error||'调整失败');const actual=Number(r.config?.size??r.live?.config?.size??cfg.size);if(Math.abs(actual-cfg.size)>1e-12)throw Error(`交易所精度处理后实际每格为 ${actual} BTC，与提交值 ${cfg.size} 不一致；请检查后重新读取官方状态`);window.ondoDraftDirty=false;if($('ondo-risk-preview'))$('ondo-risk-preview').textContent=`调整完成：已定向撤 ${r.adjustment?.cancelledStrategyOrders??0} 笔旧策略单并确认；按 ${cfg.gridCount} 格、每格 ${actual} BTC 重建 ${r.addedOrders?.length??0} 笔网格。`;await refreshOndoOverview();await refreshOndoCandles()}catch(e){alert('Ondo 调整失败：'+e.message)}finally{if(b){b.disabled=false;b.textContent='调整区间并重建'}}
+}
+
+async function saveOndoConfig(){const mode=document.querySelector('#ondo-modes .mode-btn.sel')?.dataset.mode||'neutral',market=$('ondo-market')?.value||'',lower=Number($('ondo-lower')?.value),upper=Number($('ondo-upper')?.value),gridCount=Number($('ondo-grid-count')?.value),size=Number($('ondo-size')?.value),leverage=Number($('ondo-leverage')?.value);if(!market||!(upper>lower)||!(gridCount>=2)||!(size>0)||!(leverage>=1)){alert('请填写正确的交易对、上下边界、网格数量、每格数量和杠杆');return}localStorage.setItem('ondo-draft-config',JSON.stringify({market,mode,lower,upper,gridCount,size,leverage,outRange:$('ondo-out-range')?.value||'pause',savedAt:Date.now()}));if($('ondo-risk-preview'))$('ondo-risk-preview').textContent=`已保存本地策略草稿：${mode==='long'?'做多':mode==='short'?'做空':'中性'} · ${gridCount}格 · ${leverage}x · ${lower} ~ ${upper}；未调用交易接口。`;}
+function applyOndoRiskProfile(profile){
+  // 仅调整页面草稿参数：不保存、不调用交易接口，也不影响正在运行的 Ondo 网格。
+  const aggressive=profile==='aggressive';
+  if($('ondo-grid-count'))$('ondo-grid-count').value=aggressive?20:12;
+  if($('ondo-leverage'))$('ondo-leverage').value=aggressive?8:5;
+  const hint=aggressive?'激进：20 格 · 8x · 网格更密、成交更频繁、保证金波动更大':'稳健：12 格 · 5x · 网格更疏、成交较少、保证金压力更低';
+  if($('ondo-risk-hint'))$('ondo-risk-hint').textContent=hint;
+  if($('ondo-smart-note'))$('ondo-smart-note').textContent=`已切换为${hint}（仅更新本地草稿，未保存/未下单）`;
+  if($('ondo-risk-preview'))$('ondo-risk-preview').textContent=`Ondo 风格草稿已更新：${hint}。当前运行中的实盘网格不会被修改。`;
+  recalcOndoSize();
+}
+function initOndoControls(){const modes=$('ondo-modes');if(!modes)return;const outRange=$('ondo-out-range');if(outRange){outRange.dataset.venue='ondo';outRange.title='仅 Ondo 网格使用；不影响 PopDEX 区间外策略';outRange.addEventListener('change',()=>{if($('ondo-risk-preview'))$('ondo-risk-preview').textContent=`Ondo 独立区间外策略：${outRange.value==='recover'?'只减仓回收阶梯':'冲破区间平仓'}；不会修改 PopDEX。`})}const risk=$('ondo-risk-toggle');risk?.querySelectorAll('.risk-btn').forEach(b=>b.addEventListener('click',()=>{risk.querySelectorAll('.risk-btn').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');applyOndoRiskProfile(b.dataset.risk)}));let mode='neutral';modes.querySelectorAll('.mode-btn').forEach(b=>b.addEventListener('click',()=>{modes.querySelectorAll('.mode-btn').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');mode=b.dataset.mode||'neutral';if($('ondo-risk-preview'))$('ondo-risk-preview').textContent=`当前选择：${mode==='long'?'做多':mode==='short'?'做空':'中性'}；保存后仍不会下单。`;recalcOndoSize()}));$('ondo-smart-fill')?.addEventListener('click',applyOndoSmartFill);$('ondo-save-config')?.addEventListener('click',saveOndoConfig);try{const d=JSON.parse(localStorage.getItem('ondo-draft-config')||'null');if(d){if($('ondo-lower'))$('ondo-lower').value=d.lower;if($('ondo-upper'))$('ondo-upper').value=d.upper;if($('ondo-grid-count'))$('ondo-grid-count').value=d.gridCount;if($('ondo-leverage'))$('ondo-leverage').value=d.leverage;if($('ondo-out-range'))$('ondo-out-range').value=d.outRange||'close';const b=[...modes.querySelectorAll('.mode-btn')].find(x=>x.dataset.mode===d.mode);if(b)b.click()}}catch{} }
+function applyOndoSmartFill(){const rows=window.ondoCandles||[];if(rows.length<20){if($('ondo-smart-note'))$('ondo-smart-note').textContent='行情尚未加载完成，请稍后重试。';return}const vals=rows.map(x=>Number(x.close)).filter(Number.isFinite),last=vals.at(-1),min=Math.min(...vals),max=Math.max(...vals),pad=(max-min)*.12||last*.01,tag=$('ondo-rec-tag')?.textContent||'';$('ondo-lower').value=Math.max(0,min-pad).toFixed(2);$('ondo-upper').value=(max+pad).toFixed(2);let mode=tag.includes('偏多')?'long':tag.includes('偏空')?'short':'neutral';document.querySelectorAll('#ondo-modes .mode-btn').forEach(x=>x.classList.toggle('sel',x.dataset.mode===mode));const risk=$('ondo-risk-toggle')?.querySelector('.risk-btn.sel')?.dataset.risk||'steady';$('ondo-grid-count').value=risk==='aggressive'?20:12;$('ondo-leverage').value=risk==='aggressive'?8:5;recalcOndoSize();if($('ondo-smart-note'))$('ondo-smart-note').textContent=`✅ 已按 ${$('ondo-market')?.selectedOptions[0]?.textContent||'当前市场'} 最新行情填充：${mode==='long'?'做多':mode==='short'?'做空':'中性'}；仅填参数，不会下单。`;if($('ondo-risk-preview'))$('ondo-risk-preview').textContent='参数已智能填充；请检查后再保存或启动。';}
+initOndoControls();for(const id of ['ondo-lower','ondo-upper','ondo-grid-count','ondo-size','ondo-leverage'])$(id)?.addEventListener('input',()=>{window.ondoDraftDirty=true;if(id==='ondo-size')window.ondoSizeManual=true;updateOndoDraftPreview()});$('ondo-apply-rec')?.addEventListener('click',applyOndoRecommendation);$('ondo-start-btn')?.addEventListener('click',ondoStartLive);$('ondo-stop-btn')?.addEventListener('click',ondoStopLive);$('ondo-cancel-orders-btn')?.addEventListener('click',ondoCancelOrders);$('ondo-adjust-btn')?.addEventListener('click',ondoAdjustGrid);
+$('ondo-market')?.addEventListener('change',()=>{const d=window.ondoMarkets?.find(x=>x.market===$('ondo-market').value);window.ondoTakerFee=Number(d?.takerFee||0.00035);window.ondoSizeManual=false;window.ondoTrendAnalysis=null;refreshOndoCandles();refreshOndoTrend()});
+$('ondo-interval')?.addEventListener('change',refreshOndoCandles);
+
+loadOndoMarkets();refreshPopdexOverview();setInterval(refreshPopdexOverview,1500);refreshOndoOverview();setInterval(refreshOndoOverview,5000);refreshOndoCandles();refreshOndoTrend();setInterval(refreshOndoCandles,60000);setInterval(refreshOndoTrend,60000);
 
 function updateConnStatus() {
   const el = $('hdr-conn'), txt = $('hdr-conn-txt');
@@ -1684,7 +1989,9 @@ function renderOverview(data) {
     const badge = $(`ov-${p}-badge`);
     badge.textContent = d.mode?.toUpperCase() || 'PAPER';
     badge.className = 'badge ' + (d.mode === 'live' ? 'badge-live' : 'badge-paper');
-    setExHealth(p, d.health, true);
+    // 顶栏交易状态灯：只反映网格是否正在运行（运行绿灯，未运行/异常红灯）。
+    const headerDot=$(`hdr-${p}-dot`);
+    if(headerDot){headerDot.className='hdot '+(d.running?'ok':'error');headerDot.title=`${p.toUpperCase()}：${d.running?'网格运行中':'网格未运行'}`;}
 
     $(`ov-${p}-pnl`).innerHTML = `<span class="${cls(d.totalPnl)}">${signed(d.totalPnl)}</span>`;
     $(`ov-${p}-ret`).innerHTML = d.returnPct != null ? `<span class="${cls(d.returnPct)}">收益率 ${d.returnPct >= 0 ? '+' : ''}${d.returnPct}%</span>` : '收益率 —';
@@ -1958,7 +2265,7 @@ async function aiRefreshStatus() {
       }
       if (document.activeElement !== $('ov-ai-mkt-min')) $('ov-ai-mkt-min').placeholder = s.marketMin;
       if (document.activeElement !== $('ov-ai-sent-min')) $('ov-ai-sent-min').placeholder = s.sentinelMin;
-      for (const p of ['de', 'ex', 'rs']) {
+      for (const p of ['de', 'ex', 'rs', 'ondo']) {
         const el = $(`ov-${p}-ai`);
         const per = s.sentinel && s.sentinel.per ? s.sentinel.per[p] : null;
         if (el && per) {
@@ -2008,25 +2315,30 @@ async function aiReport(btn) {
 
 async function aiAnalyze(p, btn) {
   if (btn) { btn.disabled = true; btn.textContent = '分析中…'; }
-  const box = $('ai-analyze-box');
+  const box = $('ai-analyze-box'), venue = p === 'ondo' ? 'Ondo Perp' : AI_EXNAME[p];
   try {
     const r = await fetch('/api/ai/analyze', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ex: p }) });
     const j = await r.json();
     if (j.error) { box.textContent = '❌ ' + j.error; }
-    else {
+    else if (p === 'ondo') {
+      const s = j.snapshot || {};
       box.className = 'ai-box';
-      box.textContent =
-        `【${AI_EXNAME[p]} · ${j.market} · 现价 ${j.price}】\n` +
+      box.textContent = `【Ondo Perp · ${s.market || '—'}】\n` +
+        `网格状态：${s.gridRunning ? '运行中' : '未运行'} · 策略开放订单：${s.openStrategyOrders ?? '—'} · 可用保证金：${s.availableMargin ?? '—'}\n` +
+        (s.configuredRange ? `当前参数：${s.configuredRange.mode || 'neutral'} · 区间 ${s.configuredRange.lower} ~ ${s.configuredRange.upper} · ${s.configuredRange.gridCount} 格 · 每格 ${s.configuredRange.size} · ${s.configuredRange.leverage}x\n` : '') +
+        `\n${j.report || 'AI 未返回分析文本'}`;
+    } else {
+      box.className = 'ai-box';
+      box.textContent = `【${AI_EXNAME[p]} · ${j.market} · 现价 ${j.price}】\n` +
         `市况：${j.regime} · ${j.suitable ? '✅ 适合跑网格' : '⛔ 当前不适合跑网格'} · 置信度 ${Math.round((j.confidence || 0) * 100)}%\n` +
         `建议模式：${j.recommendMode === 'long' ? '做多网格' : j.recommendMode === 'short' ? '做空网格' : '中性网格'}` +
         (j.suggestedRange ? ` · 区间 ${j.suggestedRange.lower} ~ ${j.suggestedRange.upper}` : '') +
         (j.suggestedGridCount ? ` · ${j.suggestedGridCount} 格` : '') +
         (j.suggestedSpacingPct ? ` · 间距约 ${j.suggestedSpacingPct}%` : '') +
-        `\n分析：${j.reasoning || ''}` +
-        (j.caution ? `\n⚠️ ${j.caution}` : '');
+        `\n分析：${j.reasoning || ''}` + (j.caution ? `\n⚠️ ${j.caution}` : '');
     }
   } catch (e) { box.textContent = '❌ 分析失败：' + e.message; }
-  if (btn) { btn.disabled = false; btn.textContent = '分析 ' + AI_EXNAME[p]; }
+  if (btn) { btn.disabled = false; btn.textContent = '分析 ' + venue; }
 }
 
 function aiChatAppend(cls, text) {
